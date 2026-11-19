@@ -483,8 +483,31 @@
         status = "UNPAID";
       }
 
+      function parseAmountValue(obj) {
+        const candidates = [
+          obj.totalAmount, obj.total_amount, obj.total, obj.amount, obj.price, obj.subtotal,
+          obj["應收金額"], obj["總金額"], obj["金額"], obj["應收"], obj["小計"]
+        ];
+        for (const v of candidates) {
+          if (v !== undefined && v !== null && String(v).trim() !== "") {
+            const num = Number(String(v).replace(/[^0-9.-]/g, ""));
+            if (Number.isFinite(num) && num !== 0) return num;
+          }
+        }
+        // Fallback: scan any key containing 金額 / total / amount / price / 應收 / 小計
+        for (const [k, v] of Object.entries(obj)) {
+          if (/金額|total|amount|price|應收|小計/i.test(k) && v !== undefined && v !== null && String(v).trim() !== "") {
+            const num = Number(String(v).replace(/[^0-9.-]/g, ""));
+            if (Number.isFinite(num) && num !== 0) return num;
+          }
+        }
+        // Fallback: compute from parsedItems if available
+        const itemsSum = parsedItems.reduce((acc, it) => acc + (Number(it.subtotal) || 0), 0);
+        return itemsSum;
+      }
+
       const tableVal = row.table || row.tableLabel || row["桌號"] || row["內用/外帶"] || "內用";
-      const amountVal = Number(row.totalAmount ?? row.total_amount ?? row.total ?? row.amount ?? row.price ?? row["應收金額"] ?? row["總金額"] ?? row["金額"] ?? row["應收"] ?? 0);
+      const amountVal = parseAmountValue(row);
       const timeVal = row.createdAt || row.created_at || row["時間"] || new Date().toLocaleTimeString("zh-TW", { hour12: false });
 
       return {
