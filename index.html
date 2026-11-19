@@ -13,7 +13,7 @@
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col">
 
-  <!-- 頂部列：掃碼進來的客人不會看到「櫃檯端」按鈕 -->
+  <!-- 頂部列：掃碼進來的客人不會看到「櫃檯端」切換 -->
   <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-30">
     <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
       <div>
@@ -24,20 +24,20 @@
         <p class="text-xs text-slate-400 mt-0.5">嘉義市軍輝路 23 號｜點餐後至櫃檯現金結帳出餐</p>
       </div>
 
-      <!-- 只有非掃碼模式（例如櫃檯自己開網址）才會顯示櫃檯端入口 -->
+      <!-- 只有非掃碼模式才會顯示視角切換 -->
       <div id="staff-nav" class="hidden items-center gap-2">
-        <button type="button" id="tab-customer" onclick="switchView('customer')" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500 text-slate-950 transition">
-          客人點餐視角
-        </button>
-        <button type="button" id="tab-counter" onclick="switchView('counter')" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-700 transition">
+        <button type="button" id="tab-counter" onclick="switchView('counter')" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500 text-slate-950 transition">
           櫃檯端 (<span id="pending-badge">0</span>)
+        </button>
+        <button type="button" id="tab-customer" onclick="switchView('customer')" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-700 transition">
+          客人點餐視角
         </button>
       </div>
     </div>
   </header>
 
   <!-- 1. 客人點餐畫面 -->
-  <main id="view-customer" class="max-w-5xl mx-auto w-full px-4 py-4 flex-1 pb-28">
+  <main id="view-customer" class="hidden max-w-5xl mx-auto w-full px-4 py-4 flex-1 pb-28">
     <div class="bg-slate-900 border border-slate-800 rounded-xl p-3.5 mb-4 flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center gap-2.5">
         <div class="bg-amber-500/15 border border-amber-500/40 text-amber-400 px-3.5 py-1.5 rounded-lg text-sm font-extrabold tracking-wide" id="table-display">
@@ -75,8 +75,8 @@
     </div>
   </main>
 
-  <!-- 2. 櫃檯端畫面（掃碼客人看不到、也進不來） -->
-  <section id="view-counter" class="hidden max-w-5xl mx-auto w-full px-4 py-5 flex-1 space-y-5">
+  <!-- 2. 櫃檯端畫面（無參數開啟時直接顯示；掃碼客人看不到、進不來） -->
+  <section id="view-counter" class="max-w-5xl mx-auto w-full px-4 py-5 flex-1 space-y-5">
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div>
         <h2 class="text-lg font-bold text-white">櫃檯接單與收款出餐看板</h2>
@@ -111,7 +111,7 @@
     </div>
   </section>
 
-  <!-- 內用／外帶選擇彈窗 -->
+  <!-- 內用／外帶選擇彈窗（僅在切到客人點餐視角且未選桌號時使用） -->
   <div id="mode-modal" class="hidden fixed inset-0 bg-slate-950/95 backdrop-blur-md z-50 flex items-center justify-center p-4">
     <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md p-6 space-y-5 shadow-2xl">
       <div class="text-center space-y-1.5">
@@ -405,22 +405,23 @@
       const isValidQrTable = tableParam === "takeout" || (Number(tableParam) >= 1 && Number(tableParam) <= 10);
 
       if (isValidQrTable) {
-        // 掃碼進入：鎖定為純客人點餐模式，完全隱藏櫃檯端入口
+        // 掃碼進入：直接進客人點餐畫面，完全隱藏櫃檯端入口
         isCustomerQrMode = true;
         currentTable = tableParam;
         document.getElementById("staff-nav").classList.add("hidden");
         document.getElementById("staff-nav").classList.remove("flex");
+        document.getElementById("view-counter").classList.add("hidden");
+        document.getElementById("view-customer").classList.remove("hidden");
         updateTableDisplay();
       } else {
-        // 非掃碼進入（例如櫃檯裝置直接開主網址）：開放櫃檯端切換
+        // 無參數開啟（櫃檯裝置）：直接顯示櫃檯端，不用再點一次
         isCustomerQrMode = false;
         document.getElementById("staff-nav").classList.remove("hidden");
         document.getElementById("staff-nav").classList.add("flex");
         document.getElementById("btn-reselect-mode").classList.remove("hidden");
-        openModeModal();
+        switchView("counter");
       }
 
-      // 同一瀏覽器多視窗時，即時同步櫃檯訂單狀態
       window.addEventListener("storage", (e) => {
         if (e.key === STORAGE_KEY_ORDERS) {
           renderCounterOrders();
@@ -429,7 +430,7 @@
     });
 
     function switchView(viewName) {
-      if (isCustomerQrMode) return; // 客人掃碼模式禁止切到櫃檯端
+      if (isCustomerQrMode) return;
 
       const customerEl = document.getElementById("view-customer");
       const counterEl = document.getElementById("view-counter");
@@ -447,6 +448,9 @@
         customerEl.classList.remove("hidden");
         tabCustomer.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500 text-slate-950 transition";
         tabCounter.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-700 transition";
+        if (!currentTable) {
+          openModeModal();
+        }
       }
     }
 
@@ -700,7 +704,6 @@
       return `#${String(current).padStart(3, "0")}`;
     }
 
-    // 客人按確認後，直接把訂單送進櫃檯端清單
     function submitOrder() {
       if (!currentTable) {
         closeCartModal();
@@ -717,7 +720,7 @@
         table: tableLabel,
         items: cart.map(i => ({ name: i.name, spec: i.spec, qty: i.qty, subtotal: i.unitPrice * i.qty })),
         totalAmount,
-        status: "UNPAID", // UNPAID: 待櫃檯收款 -> PAID: 已收款出餐中 -> DONE: 已完成
+        status: "UNPAID",
         createdAt: new Date().toLocaleTimeString("zh-TW", { hour12: false })
       };
 
