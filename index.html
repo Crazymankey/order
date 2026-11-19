@@ -21,7 +21,7 @@
           <span class="bg-amber-500 text-slate-950 font-bold text-xs px-2 py-0.5 rounded">貳參小館</span>
           <h1 class="text-base sm:text-lg font-bold tracking-wide text-white" id="header-title">桌邊掃碼點餐系統</h1>
         </div>
-        <p class="text-xs text-slate-400 mt-0.5">嘉義市軍輝路 23 號｜內用點餐後至櫃檯現金結帳出餐</p>
+        <p class="text-xs text-slate-400 mt-0.5">嘉義市軍輝路 23 號｜點完餐請先至櫃檯現金付款</p>
       </div>
 
       <!-- 只有櫃檯模式才會顯示視角切換 -->
@@ -100,7 +100,7 @@
       </div>
 
       <div class="space-y-1">
-        <div class="text-xs font-bold text-amber-400 tracking-wide">訂單已送出，請前往櫃檯結帳</div>
+        <div class="text-xs font-bold text-amber-400 tracking-wide">點完餐請先至櫃檯現金付款</div>
         <h2 class="text-3xl font-extrabold text-white" id="go-counter-order-id">#001</h2>
         <div class="inline-block bg-slate-800 text-slate-200 text-xs font-bold px-3 py-1 rounded-full mt-1" id="go-counter-table">
           內用｜第 1 桌
@@ -115,8 +115,8 @@
         <div id="go-counter-items" class="text-xs text-slate-300 space-y-1 pt-2 border-t border-slate-800"></div>
       </div>
 
-      <div class="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 text-xs text-amber-200 leading-relaxed text-left">
-        請持此畫面單號或報桌號至<strong>櫃檯現金付款</strong>，櫃檯確認收款後即開始為您出餐。
+      <div class="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 text-xs text-amber-200 text-center font-semibold">
+        點完餐請先至櫃檯現金付款
       </div>
 
       <button type="button" onclick="backToCustomerMenu()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold py-3 rounded-xl text-sm transition">
@@ -207,8 +207,8 @@
       <div id="cart-items-list" class="py-3 overflow-y-auto flex-1 space-y-3"></div>
 
       <div class="pt-3 border-t border-slate-800 space-y-3">
-        <div class="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 text-xs text-amber-300">
-          ⚠️ 按下確認送出後，畫面將顯示結帳憑證，請直接走到<strong>櫃檯現金付款</strong>，櫃檯確認收款後即開始出餐。
+        <div class="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 text-xs text-amber-300 font-semibold text-center">
+          點完餐請先至櫃檯現金付款
         </div>
         <div class="flex justify-between items-center text-base font-bold">
           <span>應付總金額</span>
@@ -383,7 +383,6 @@
       }
     ];
 
-    // currentModeType: "dinein" (內用) 或 "takeout" (櫃檯外帶)
     let currentModeType = "dinein";
     let currentTableNum = "1";
     let isCustomerQrMode = false;
@@ -396,14 +395,12 @@
       renderMenu();
       renderCounterOrders();
 
-      // 只認掃碼內用桌號（?table=1 到 ?table=10）；外帶不走掃碼
       const params = new URLSearchParams(window.location.search);
       const tableParam = (params.get("table") || "").trim();
       const tableNum = Number(tableParam);
       const isValidQrDineIn = tableParam !== "" && Number.isInteger(tableNum) && tableNum >= 1 && tableNum <= 10;
 
       if (isValidQrDineIn) {
-        // 客人掃碼：固定內用該桌號，直接進點餐畫面，隱藏櫃檯端
         isCustomerQrMode = true;
         currentModeType = "dinein";
         currentTableNum = String(tableNum);
@@ -415,7 +412,6 @@
         updateTableDisplay();
         switchView("customer");
       } else {
-        // 櫃檯全端：直接進櫃檯端，代客點餐時可切外帶或 1~10 桌
         isCustomerQrMode = false;
         currentModeType = "takeout";
         document.getElementById("header-title").textContent = "櫃檯全端接單系統";
