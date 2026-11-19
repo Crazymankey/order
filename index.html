@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>貳參小館｜桌邊掃碼點餐與櫃檯核銷系統</title>
+  <title>貳參小館｜桌邊掃碼點餐系統</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
@@ -13,7 +13,7 @@
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col">
 
-  <!-- 頂部導覽列：品牌標題與視角切換 -->
+  <!-- 頂部導覽列：品牌標題 -->
   <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-30">
     <div class="max-w-5xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-2">
       <div>
@@ -21,23 +21,12 @@
           <span class="bg-amber-500 text-slate-950 font-bold text-xs px-2 py-0.5 rounded">貳參小館</span>
           <h1 class="text-base sm:text-lg font-bold tracking-wide text-white">桌邊掃碼點餐系統</h1>
         </div>
-        <p class="text-xs text-slate-400 mt-0.5">嘉義市東區軍輝路23號｜先至櫃檯現金付款才做餐</p>
-      </div>
-
-      <!-- 雙視角切換器 -->
-      <div class="flex items-center bg-slate-800 p-1 rounded-lg border border-slate-700">
-        <button id="btn-view-customer" onclick="switchView('customer')" class="px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium bg-amber-500 text-slate-950 transition">
-          📱 客人點餐視角
-        </button>
-        <button id="btn-view-counter" onclick="switchView('counter')" class="px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium text-slate-300 hover:text-white transition relative">
-          🖥️ 櫃檯核銷看板
-          <span id="pending-badge" class="hidden absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">0</span>
-        </button>
+        <p class="text-xs text-slate-400 mt-0.5">嘉義市軍輝路 23 號｜先至櫃檯現金付款才做餐</p>
       </div>
     </div>
   </header>
 
-  <!-- ==================== 視角一：客人點餐介面 ==================== -->
+  <!-- ==================== 客人點餐介面 ==================== -->
   <main id="view-customer" class="max-w-5xl mx-auto w-full px-4 py-4 flex-1 pb-28">
     
     <!-- 桌號與用餐方式狀態列 -->
@@ -82,60 +71,6 @@
         <button onclick="openCartModal()" id="btn-review-order" disabled class="bg-amber-500 disabled:bg-slate-800 disabled:text-slate-500 text-slate-950 font-bold px-6 py-2.5 rounded-xl text-sm transition">
           確認餐點明細
         </button>
-      </div>
-    </div>
-  </main>
-
-  <!-- ==================== 視角二：櫃檯核銷看板 & n8n 設定 ==================== -->
-  <main id="view-counter" class="hidden max-w-5xl mx-auto w-full px-4 py-6 flex-1 space-y-6">
-    
-    <!-- 流程說明與 n8n Webhook 設定折疊區 -->
-    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
-      <div class="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h2 class="text-sm font-bold text-amber-400">⚙️ 現場無 POS API 解決方案（先付款、後出單）</h2>
-          <p class="text-xs text-slate-400 mt-1">客人送出訂單後通知櫃檯 Telegram → 客人至櫃檯付現 → 店員點擊「確認收款」並同步於小當家 POS 按單讓 T300 出單。</p>
-        </div>
-        <button onclick="toggleN8nConfig()" class="text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3 py-1.5 rounded-lg text-slate-200">
-          🔗 設定 n8n Webhook
-        </button>
-      </div>
-
-      <!-- n8n Webhook 設定面板 -->
-      <div id="n8n-config-panel" class="hidden mt-4 pt-4 border-t border-slate-800 space-y-3">
-        <div>
-          <label class="block text-xs text-slate-300 mb-1">n8n Production Webhook URL（已內建預設正式網址，若有異動可於此修改）</label>
-          <div class="flex gap-2">
-            <input type="url" id="webhook-url-input" placeholder="https://primary-production-5317642b.up.railway.app/webhook/ersan-order" class="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500" />
-            <button onclick="saveWebhookUrl()" class="bg-amber-500 text-slate-950 font-bold px-4 py-1.5 rounded-lg text-xs">儲存設定</button>
-          </div>
-          <p id="webhook-status" class="text-[11px] text-slate-400 mt-1">目前狀態：已設定 n8n Webhook（送出訂單將同步發送 POST 請求）</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- 訂單狀態看板 -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <!-- 待櫃檯收款 -->
-      <div>
-        <h3 class="text-sm font-bold text-rose-400 mb-3 flex items-center gap-2">
-          <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
-          待櫃檯現金付款（尚未做餐）
-        </h3>
-        <div id="orders-pending" class="space-y-3">
-          <div class="text-xs text-slate-500 bg-slate-900/50 border border-slate-800/80 rounded-xl p-6 text-center">目前沒有待付款訂單</div>
-        </div>
-      </div>
-
-      <!-- 已收款／POS 已出單製作中 -->
-      <div>
-        <h3 class="text-sm font-bold text-emerald-400 mb-3 flex items-center gap-2">
-          <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-          已收款（小當家 POS 已出單製作中）
-        </h3>
-        <div id="orders-paid" class="space-y-3">
-          <div class="text-xs text-slate-500 bg-slate-900/50 border border-slate-800/80 rounded-xl p-6 text-center">尚無已核銷訂單</div>
-        </div>
       </div>
     </div>
   </main>
@@ -227,7 +162,7 @@
           <span>應付總金額</span>
           <span class="text-amber-400 text-xl">NT$ <span id="modal-cart-total">0</span></span>
         </div>
-        <button onclick="submitOrder()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 rounded-xl text-sm transition">
+        <button id="btn-submit-order" onclick="submitOrder()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 rounded-xl text-sm transition">
           送出訂單並前往櫃檯付款
         </button>
       </div>
@@ -424,12 +359,11 @@
     let currentTable = "";
     let isLockedByQr = false;
     let cart = [];
-    let orders = [];
     let orderCounter = 1;
     let selectedItem = null;
     let selectedAddon = { label: "正常份量", price: 0 };
     let selectedNotes = [];
-    let webhookUrl = localStorage.getItem("ersan_n8n_webhook") || DEFAULT_WEBHOOK_URL;
+    const webhookUrl = localStorage.getItem("ersan_n8n_webhook") || DEFAULT_WEBHOOK_URL;
 
     window.addEventListener("DOMContentLoaded", () => {
       renderTableButtons();
@@ -439,21 +373,14 @@
       const tableParam = params.get("table");
 
       if (tableParam && (tableParam === "takeout" || (Number(tableParam) >= 1 && Number(tableParam) <= 10))) {
-        // 掃專屬桌牌 / 外帶 QR Code：直接帶入並鎖定，不跳選擇視窗
         currentTable = tableParam;
         isLockedByQr = true;
         updateTableDisplay();
       } else {
-        // 掃一般主網址：強制先跳出「內用 / 外帶」選擇視窗
         isLockedByQr = false;
         document.getElementById("btn-reselect-mode").classList.remove("hidden");
         openModeModal();
       }
-
-      document.getElementById("webhook-url-input").value = webhookUrl;
-      document.getElementById("webhook-status").textContent = webhookUrl
-        ? "目前狀態：已設定 n8n Webhook（送出訂單將同步發送 POST 請求）"
-        : "目前狀態：本地展示模式（送出訂單後可於櫃檯看板檢視）";
     });
 
     function renderTableButtons() {
@@ -688,6 +615,10 @@
         return;
       }
 
+      const submitBtn = document.getElementById("btn-submit-order");
+      submitBtn.disabled = true;
+      submitBtn.textContent = "送出中...";
+
       const orderId = `#${String(orderCounter++).padStart(3, "0")}`;
       const totalAmount = cart.reduce((sum, i) => sum + i.unitPrice * i.qty, 0);
       const tableLabel = getOrderTableLabel();
@@ -704,7 +635,7 @@
 
       if (webhookUrl) {
         try {
-          fetch(webhookUrl, {
+          await fetch(webhookUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
@@ -714,11 +645,12 @@
         }
       }
 
-      orders.unshift(payload);
       cart = [];
       updateCartUI();
       closeCartModal();
-      renderCounterBoard();
+
+      submitBtn.disabled = false;
+      submitBtn.textContent = "送出訂單並前往櫃檯付款";
 
       document.getElementById("receipt-order-id").textContent = orderId;
       document.getElementById("receipt-table").textContent = tableLabel;
@@ -728,102 +660,6 @@
 
     function closeReceiptModal() {
       document.getElementById("receipt-modal").classList.add("hidden");
-    }
-
-    function switchView(view) {
-      const custView = document.getElementById("view-customer");
-      const countView = document.getElementById("view-counter");
-      const btnCust = document.getElementById("btn-view-customer");
-      const btnCount = document.getElementById("btn-view-counter");
-
-      if (view === "customer") {
-        custView.classList.remove("hidden");
-        countView.classList.add("hidden");
-        btnCust.className = "px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium bg-amber-500 text-slate-950 transition";
-        btnCount.className = "px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium text-slate-300 hover:text-white transition relative";
-      } else {
-        custView.classList.add("hidden");
-        countView.classList.remove("hidden");
-        btnCount.className = "px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium bg-amber-500 text-slate-950 transition relative";
-        btnCust.className = "px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium text-slate-300 hover:text-white transition";
-        renderCounterBoard();
-      }
-    }
-
-    function renderCounterBoard() {
-      const pendingEl = document.getElementById("orders-pending");
-      const paidEl = document.getElementById("orders-paid");
-      const badgeEl = document.getElementById("pending-badge");
-
-      const pendingOrders = orders.filter(o => o.payment_status === "PENDING_CASH");
-      const paidOrders = orders.filter(o => o.payment_status === "PAID_PREPARING");
-
-      if (pendingOrders.length > 0) {
-        badgeEl.textContent = pendingOrders.length;
-        badgeEl.classList.remove("hidden");
-      } else {
-        badgeEl.classList.add("hidden");
-      }
-
-      pendingEl.innerHTML = pendingOrders.length === 0
-        ? `<div class="text-xs text-slate-500 bg-slate-900/50 border border-slate-800/80 rounded-xl p-6 text-center">目前沒有待付款訂單</div>`
-        : pendingOrders.map(o => `
-          <div class="bg-slate-900 border border-rose-500/40 rounded-xl p-4 space-y-3">
-            <div class="flex justify-between items-center">
-              <div class="flex items-center gap-2">
-                <span class="font-extrabold text-base text-white">${o.order_id}</span>
-                <span class="bg-amber-500/20 text-amber-300 text-xs font-bold px-2 py-0.5 rounded">${o.table}</span>
-              </div>
-              <span class="text-xs text-slate-400">${o.created_at}</span>
-            </div>
-            <div class="space-y-1 border-y border-slate-800 py-2 text-xs">
-              ${o.items.map(i => `<div class="flex justify-between"><span>${i.name} <span class="text-slate-400">(${i.spec})</span> x${i.qty}</span><span>$${i.subtotal}</span></div>`).join("")}
-            </div>
-            <div class="flex justify-between items-center">
-              <div class="text-sm font-bold text-rose-400">應收現金：NT$ ${o.total_amount}</div>
-              <button onclick="confirmPayment('${o.order_id}')" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-3.5 py-1.5 rounded-lg text-xs transition">
-                ✓ 確認收款並通知 POS 出單
-              </button>
-            </div>
-          </div>
-        `).join("");
-
-      paidEl.innerHTML = paidOrders.length === 0
-        ? `<div class="text-xs text-slate-500 bg-slate-900/50 border border-slate-800/80 rounded-xl p-6 text-center">尚無已核銷訂單</div>`
-        : paidOrders.map(o => `
-          <div class="bg-slate-900/70 border border-emerald-500/30 rounded-xl p-4 space-y-2 opacity-90">
-            <div class="flex justify-between items-center">
-              <div class="flex items-center gap-2">
-                <span class="font-bold text-sm text-white">${o.order_id}</span>
-                <span class="bg-slate-800 text-slate-300 text-xs px-2 py-0.5 rounded">${o.table}</span>
-              </div>
-              <span class="text-[11px] text-emerald-400 font-semibold">已收款 $${o.total_amount}</span>
-            </div>
-            <div class="text-xs text-slate-400">
-              ${o.items.map(i => `${i.name}x${i.qty}`).join("、")}
-            </div>
-          </div>
-        `).join("");
-    }
-
-    function confirmPayment(orderId) {
-      const target = orders.find(o => o.order_id === orderId);
-      if (target) {
-        target.payment_status = "PAID_PREPARING";
-        renderCounterBoard();
-      }
-    }
-
-    function toggleN8nConfig() {
-      document.getElementById("n8n-config-panel").classList.toggle("hidden");
-    }
-
-    function saveWebhookUrl() {
-      webhookUrl = document.getElementById("webhook-url-input").value.trim();
-      localStorage.setItem("ersan_n8n_webhook", webhookUrl);
-      document.getElementById("webhook-status").textContent = webhookUrl
-        ? "目前狀態：已設定 n8n Webhook（送出訂單將同步發送 POST 請求）"
-        : "目前狀態：本地展示模式（送出訂單後可於櫃檯看板檢視）";
     }
   </script>
 </body>
