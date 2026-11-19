@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>貳參小館｜內用掃碼點餐與櫃檯全端系統</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col">
+
+  <!-- 頂部列：掃碼進來的客人不會看到「櫃檯端」切換 -->
+  <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-30">
+    <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="bg-amber-500 text-slate-950 font-bold text-xs px-2 py-0.5 rounded">貳參小館</span>
+          <h1 class="text-base sm:text-lg font-bold tracking-wide text-white" id="header-title">桌邊掃碼點餐系統</h1>
+        </div>
+        <p class="text-xs text-slate-400 mt-0.5">嘉義市軍輝路 23 號｜點完餐請先至櫃檯現金付款</p>
+      </div>
+
+      <!-- 只有櫃檯模式才會顯示視角切換 -->
+      <div id="staff-nav" class="hidden items-center gap-2">
+        <button type="button" id="tab-counter" onclick="switchView('counter')" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500 text-slate-950 transition">
+          櫃檯端 (<span id="pending-badge">0</span>)
+        </button>
+        <button type="button" id="tab-customer" onclick="switchView('customer')" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-700 transition">
+          代客點餐視角
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 1. 客人／代客點餐畫面 -->
+  <main id="view-customer" class="hidden max-w-5xl mx-auto w-full px-4 py-4 flex-1 pb-28">
+    <div class="bg-slate-900 border border-slate-800 rounded-xl p-3.5 mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-2.5 flex-wrap">
+        <div class="bg-amber-500/15 border border-amber-500/40 text-amber-400 px-3.5 py-1.5 rounded-lg text-sm font-extrabold tracking-wide" id="table-display">
+          內用｜第 1 桌
+        </div>
+
+        <!-- 僅櫃檯代客點餐時顯示快速切換（外帶或 1~10 桌），掃碼客人完全看不到 -->
+        <div id="staff-order-type-bar" class="hidden items-center gap-1.5 flex-wrap">
+          <button type="button" onclick="setCounterOrderType('takeout')" id="btn-type-takeout" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-800 text-slate-300 border border-slate-700 hover:border-amber-500 transition">
+            櫃檯外帶
+          </button>
+          <select id="staff-table-select" onchange="setCounterOrderType(this.value)" class="bg-slate-800 border border-slate-700 text-slate-200 text-xs font-bold px-2.5 py-1 rounded-lg">
+            <option value="1">內用 1 桌</option>
+            <option value="2">內用 2 桌</option>
+            <option value="3">內用 3 桌</option>
+            <option value="4">內用 4 桌</option>
+            <option value="5">內用 5 桌</option>
+            <option value="6">內用 6 桌</option>
+            <option value="7">內用 7 桌</option>
+            <option value="8">內用 8 桌</option>
+            <option value="9">內用 9 桌</option>
+            <option value="10">內用 10 桌</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="text-xs text-slate-400">
+        ★ 內用白飯、飲料免費供應｜飯類可免費加大
+      </div>
+    </div>
+
+    <div id="category-tabs" class="flex gap-2 overflow-x-auto no-scrollbar pb-3 mb-2 sticky top-[61px] bg-slate-950/95 backdrop-blur z-20 pt-1"></div>
+    <div id="menu-container" class="space-y-6"></div>
+
+    <!-- 底部購物車列 -->
+    <div id="cart-bar" class="fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur border-t border-slate-800 p-3 z-30">
+      <div class="max-w-5xl mx-auto flex items-center justify-between gap-4">
+        <div onclick="openCartModal()" class="cursor-pointer flex items-center gap-3">
+          <div class="relative bg-slate-800 p-2.5 rounded-xl border border-slate-700">
+            🛒
+            <span id="cart-count" class="absolute -top-1.5 -right-1.5 bg-amber-500 text-slate-950 text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">0</span>
+          </div>
+          <div>
+            <div class="text-xs text-slate-400">點此查看明細</div>
+            <div class="text-lg font-bold text-amber-400">NT$ <span id="cart-total">0</span></div>
+          </div>
+        </div>
+        <button type="button" onclick="openCartModal()" id="btn-review-order" disabled class="bg-amber-500 disabled:bg-slate-800 disabled:text-slate-500 text-slate-950 font-bold px-6 py-2.5 rounded-xl text-sm transition">
+          確認餐點明細
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <!-- 1B. 送單後「前往櫃檯結帳」畫面 -->
+  <section id="view-go-counter" class="hidden max-w-md mx-auto w-full px-4 py-8 flex-1 flex flex-col justify-center">
+    <div class="bg-slate-900 border border-amber-500/50 rounded-2xl p-6 text-center space-y-5 shadow-2xl">
+      <div class="w-14 h-14 bg-amber-500/20 text-amber-400 rounded-full flex items-center justify-center mx-auto text-3xl font-bold">
+        🚶
+      </div>
+
+      <div class="space-y-1">
+        <div class="text-xs font-bold text-amber-400 tracking-wide">點完餐請先至櫃檯現金付款</div>
+        <h2 class="text-3xl font-extrabold text-white" id="go-counter-order-id">#001</h2>
+        <div class="inline-block bg-slate-800 text-slate-200 text-xs font-bold px-3 py-1 rounded-full mt-1" id="go-counter-table">
+          內用｜第 1 桌
+        </div>
+      </div>
+
+      <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 text-left space-y-2.5">
+        <div class="flex items-center justify-between">
+          <span class="text-xs text-slate-400">櫃檯應付現金金額</span>
+          <span class="text-xl font-extrabold text-amber-400" id="go-counter-amount">NT$ 0</span>
+        </div>
+        <div id="go-counter-items" class="text-xs text-slate-300 space-y-1 pt-2 border-t border-slate-800"></div>
+      </div>
+
+      <div class="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 text-xs text-amber-200 text-center font-semibold">
+        點完餐請先至櫃檯現金付款
+      </div>
+
+      <button type="button" onclick="backToCustomerMenu()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold py-3 rounded-xl text-sm transition">
+        返回點餐畫面（再點一單）
+      </button>
+    </div>
+  </section>
+
+  <!-- 2. 櫃檯全端控制畫面（開主網址直接顯示；掃碼客人看不到、進不來） -->
+  <section id="view-counter" class="max-w-5xl mx-auto w-full px-4 py-5 flex-1 space-y-5">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h2 class="text-lg font-bold text-white">櫃檯全端接單與收款出餐控制</h2>
+        <p class="text-xs text-slate-400">內用掃碼與櫃檯單同步顯示於此，確認收款後即可進入製作出餐與完成</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button type="button" onclick="syncCounterOrders()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-bold px-3.5 py-2 rounded-xl transition">
+          🔄 重新整理訂單
+        </button>
+        <button type="button" onclick="clearCompletedOrders()" class="bg-slate-900 hover:bg-rose-950/60 border border-slate-800 text-slate-400 hover:text-rose-300 text-xs px-3 py-2 rounded-xl transition">
+          清除已完成
+        </button>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="bg-slate-900 border border-amber-500/30 rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-2.5">
+          <span class="font-bold text-amber-400 text-sm">💰 待櫃檯收款／待確認</span>
+          <span id="count-unpaid" class="bg-amber-500 text-slate-950 text-xs font-extrabold px-2 py-0.5 rounded-full">0</span>
+        </div>
+        <div id="orders-unpaid" class="space-y-3"></div>
+      </div>
+
+      <div class="bg-slate-900 border border-emerald-500/30 rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-2.5">
+          <span class="font-bold text-emerald-400 text-sm">🍳 已收款／製作出餐中</span>
+          <span id="count-paid" class="bg-emerald-500 text-slate-950 text-xs font-extrabold px-2 py-0.5 rounded-full">0</span>
+        </div>
+        <div id="orders-paid" class="space-y-3"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 餐點規格與備註彈窗 -->
+  <div id="option-modal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md p-5 space-y-4">
+      <div class="flex justify-between items-start">
+        <div>
+          <h3 id="modal-item-name" class="text-lg font-bold text-white">品項名稱</h3>
+          <p id="modal-item-price" class="text-sm text-amber-400 font-semibold">NT$ 0</p>
+        </div>
+        <button type="button" onclick="closeOptionModal()" class="text-slate-400 hover:text-white text-xl leading-none">&times;</button>
+      </div>
+
+      <div id="modal-addon-section" class="space-y-2">
+        <label class="block text-xs font-semibold text-slate-300">份量／加麵選擇</label>
+        <div id="modal-addon-options" class="grid grid-cols-2 gap-2"></div>
+      </div>
+
+      <div class="space-y-2">
+        <label class="block text-xs font-semibold text-slate-300">口味備註（可複選）</label>
+        <div class="flex flex-wrap gap-2" id="modal-notes-options">
+          <button type="button" onclick="toggleNote(this, '不要蔥')" class="note-btn text-xs border border-slate-700 bg-slate-800 px-3 py-1.5 rounded-lg text-slate-300">不要蔥</button>
+          <button type="button" onclick="toggleNote(this, '小辣')" class="note-btn text-xs border border-slate-700 bg-slate-800 px-3 py-1.5 rounded-lg text-slate-300">小辣</button>
+          <button type="button" onclick="toggleNote(this, '中辣')" class="note-btn text-xs border border-slate-700 bg-slate-800 px-3 py-1.5 rounded-lg text-slate-300">中辣</button>
+          <button type="button" onclick="toggleNote(this, '不要胡椒')" class="note-btn text-xs border border-slate-700 bg-slate-800 px-3 py-1.5 rounded-lg text-slate-300">不要胡椒</button>
+        </div>
+      </div>
+
+      <button type="button" onclick="confirmAddToCart()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 rounded-xl text-sm transition">
+        加入購物車
+      </button>
+    </div>
+  </div>
+
+  <!-- 購物車確認彈窗 -->
+  <div id="cart-modal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md p-5 max-h-[85vh] flex flex-col">
+      <div class="flex justify-between items-center pb-3 border-b border-slate-800">
+        <div>
+          <h3 class="text-lg font-bold text-white">確認點餐明細</h3>
+          <p class="text-xs text-amber-400 font-semibold mt-0.5" id="cart-modal-table-label">內用｜第 1 桌</p>
+        </div>
+        <button type="button" onclick="closeCartModal()" class="text-slate-400 hover:text-white text-xl leading-none">&times;</button>
+      </div>
+
+      <div id="cart-items-list" class="py-3 overflow-y-auto flex-1 space-y-3"></div>
+
+      <div class="pt-3 border-t border-slate-800 space-y-3">
+        <div class="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 text-xs text-amber-300 font-semibold text-center">
+          點完餐請先至櫃檯現金付款
+        </div>
+        <div class="flex justify-between items-center text-base font-bold">
+          <span>應付總金額</span>
+          <span class="text-amber-400 text-xl">NT$ <span id="modal-cart-total">0</span></span>
+        </div>
+        <button type="button" id="btn-submit-order" onclick="submitOrder()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 rounded-xl text-sm transition">
+          確認送出並前往櫃檯結帳
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY_ORDERS = "ersan_counter_orders_v1";
+    const STORAGE_KEY_SEQ = "ersan_counter_seq_v1";
+    const N8N_WEBHOOK_URL = "https://primary-production-5317642b.up.railway.app/webhook/ersan-order";
+    const COUNTER_ORDERS_URL = "https://primary-production-5317642b.up.railway.app/webhook/ersan-orders";
+
+    const MENU_DATA = [
+      {
+        category: "台式炒飯",
+        addonType: "rice",
+        items: [
+          { name: "黃金蛋炒飯", price: 55 },
+          { name: "肉絲蛋炒飯", price: 75 },
+          { name: "鮭魚蛋炒飯", price: 90 },
+          { name: "蝦仁蛋炒飯", price: 95 },
+          { name: "牛肉蛋炒飯", price: 100 },
+          { name: "黃金豬排蛋炒飯", price: 95 },
+          { name: "卡拉雞腿蛋炒飯", price: 100 },
+          { name: "酥炸唐揚雞蛋炒飯", price: 120 },
+          { name: "鐵路豬排蛋炒飯", price: 120 }
+        ]
+      },
+      {
+        category: "港式炒飯",
+        addonType: "rice",
+        items: [
+          { name: "海鮮魚子炒飯", price: 130 },
+          { name: "港式臘味炒飯", price: 140 }
+        ]
+      },
+      {
+        category: "炒麵、河粉",
+        addonType: "noodle_dynamic",
+        items: [
+          { name: "什錦炒麵", price: 100, customAddon: "noodle" },
+          { name: "日式炒烏龍（豬）", price: 120, customAddon: "udon" },
+          { name: "日式炒烏龍（牛）", price: 130, customAddon: "udon" },
+          { name: "乾炒豬河粉", price: 135, customAddon: "none" },
+          { name: "乾炒牛河粉", price: 155, customAddon: "none" }
+        ]
+      },
+      {
+        category: "飯類",
+        addonType: "none",
+        items: [
+          { name: "肉燥飯（大）", price: 60 },
+          { name: "肉燥飯（小）", price: 40 }
+        ]
+      },
+      {
+        category: "豬肉",
+        addonType: "none",
+        items: [
+          { name: "蔥爆豬肉", price: 120 },
+          { name: "客家小炒", price: 140 },
+          { name: "酥炸紅糟肉", price: 160 },
+          { name: "港式咕咾肉", price: 160 },
+          { name: "川味水煮豬", price: 170 }
+        ]
+      },
+      {
+        category: "牛肉",
+        addonType: "none",
+        items: [
+          { name: "空心菜炒牛肉", price: 150 },
+          { name: "蔥爆牛肉", price: 160 },
+          { name: "川味水煮牛", price: 180 }
+        ]
+      },
+      {
+        category: "雞肉",
+        addonType: "none",
+        items: [
+          { name: "蠔油醬爆雞丁", price: 140 },
+          { name: "川味宮保雞丁", price: 160 },
+          { name: "三杯雞丁", price: 160 }
+        ]
+      },
+      {
+        category: "海鮮類",
+        addonType: "none",
+        items: [
+          { name: "月亮蝦餅", price: 140 },
+          { name: "酸甜糖醋魚柳", price: 150 },
+          { name: "香酥避風塘魚柳", price: 170 },
+          { name: "宮保蝦球", price: 190 },
+          { name: "香酥避風塘蝦球", price: 190 },
+          { name: "塔香蛤蜊", price: 170 },
+          { name: "東石鮮蝦捲", price: 100 },
+          { name: "東石鮮蚵捲", price: 100 }
+        ]
+      },
+      {
+        category: "田園時蔬、豆腐",
+        addonType: "none",
+        items: [
+          { name: "季節炒時蔬", price: 80 },
+          { name: "川味麻婆豆腐", price: 110 },
+          { name: "三鮮豆腐煲", price: 170 }
+        ]
+      },
+      {
+        category: "蛋類",
+        addonType: "none",
+        items: [
+          { name: "香蔥烘蛋", price: 70 },
+          { name: "九層塔烘蛋", price: 80 },
+          { name: "蝦仁烘蛋", price: 130 }
+        ]
+      },
+      {
+        category: "酥炸點心",
+        addonType: "none",
+        items: [
+          { name: "奶油可樂餅", price: 20 },
+          { name: "酥炸金黃薯條", price: 40 },
+          { name: "酥炸雞塊（1份6塊）", price: 55 },
+          { name: "日式唐揚雞", price: 65 },
+          { name: "酥炸卡拉雞腿", price: 45 },
+          { name: "日式炸豬排", price: 50 },
+          { name: "炸蝦天婦羅", price: 100 },
+          { name: "酥炸水餃", price: 40 }
+        ]
+      },
+      {
+        category: "湯品",
+        addonType: "none",
+        items: [
+          { name: "青菜蛋花湯", price: 25 },
+          { name: "紫菜蛋花湯", price: 30 },
+          { name: "貢丸湯", price: 30 },
+          { name: "魚丸湯", price: 35 },
+          { name: "餛飩湯", price: 45 },
+          { name: "蛤仔湯", price: 45 }
+        ]
+      },
+      {
+        category: "湯麵",
+        addonType: "noodle_dynamic",
+        items: [
+          { name: "什錦海鮮湯麵", price: 110, customAddon: "noodle" },
+          { name: "什錦海鮮烏龍麵", price: 130, customAddon: "udon" }
+        ]
+      },
+      {
+        category: "日式照燒飯",
+        addonType: "rice",
+        items: [
+          { name: "日式照燒豬", price: 110 },
+          { name: "日式照燒牛", price: 130 },
+          { name: "泡菜豬肉", price: 120 },
+          { name: "泡菜牛肉", price: 140 }
+        ]
+      },
+      {
+        category: "小菜盤",
+        addonType: "none",
+        items: [
+          { name: "45元小菜-黃金泡菜", price: 45 }
+        ]
+      }
+    ];
+
+    let currentModeType = "dinein";
+    let currentTableNum = "1";
+    let isCustomerQrMode = false;
+    let cart = [];
+    let selectedItem = null;
+    let selectedAddon = { label: "正常份量", price: 0 };
+    let selectedNotes = [];
+
+    window.addEventListener("DOMContentLoaded", () => {
+      renderMenu();
+      renderCounterOrders();
+
+      const params = new URLSearchParams(window.location.search);
+      const tableParam = (params.get("table") || "").trim();
+      const tableNum = Number(tableParam);
+      const isValidQrDineIn = tableParam !== "" && Number.isInteger(tableNum) && tableNum >= 1 && tableNum <= 10;
+
+      if (isValidQrDineIn) {
+        isCustomerQrMode = true;
+        currentModeType = "dinein";
+        currentTableNum = String(tableNum);
+        document.getElementById("header-title").textContent = "內用掃碼點餐系統";
+        document.getElementById("staff-nav").classList.add("hidden");
+        document.getElementById("staff-nav").classList.remove("flex");
+        document.getElementById("staff-order-type-bar").classList.add("hidden");
+        document.getElementById("staff-order-type-bar").classList.remove("flex");
+        updateTableDisplay();
+        switchView("customer");
+      } else {
+        isCustomerQrMode = false;
+        currentModeType = "takeout";
+        document.getElementById("header-title").textContent = "櫃檯全端接單系統";
+        document.getElementById("staff-nav").classList.remove("hidden");
+        document.getElementById("staff-nav").classList.add("flex");
+        document.getElementById("staff-order-type-bar").classList.remove("hidden");
+        document.getElementById("staff-order-type-bar").classList.add("flex");
+        updateTableDisplay();
+        switchView("counter");
+        syncCounterOrders();
+        setInterval(syncCounterOrders, 5000);
+      }
+
+      window.addEventListener("storage", (e) => {
+        if (e.key === STORAGE_KEY_ORDERS) {
+          renderCounterOrders();
+        }
+      });
+    });
+
+    function normalizeRemoteOrder(raw, idx = 0) {
+      if (!raw || typeof raw !== "object") return null;
+      const row = raw.json && typeof raw.json === "object" ? raw.json : raw;
+      const rawId = String(
+        row.id ||
+        row.orderId ||
+        row.order_id ||
+        row["訂單編號"] ||
+        row["單號"] ||
+        ""
+      ).trim();
+      const id = rawId || `SHEET-${idx + 1}`;
+
+      let parsedItems = [];
+      const rawItems = row.items ?? row.items_text ?? row["餐點明細"] ?? row["品項"];
+      if (Array.isArray(rawItems)) {
+        parsedItems = rawItems.map(i => ({
+          name: i.name || i["品項"] || "餐點",
+          spec: i.spec || i["規格"] || "標準",
+          qty: Number(i.qty || i["數量"] || 1),
+          subtotal: Number(i.subtotal || ((i.unitPrice || 0) * (i.qty || 1)))
+        }));
+      } else if (typeof rawItems === "string" && rawItems.trim()) {
+        try {
+          const arr = JSON.parse(rawItems);
+          if (Array.isArray(arr)) {
+            parsedItems = arr.map(i => ({
+              name: i.name || i["品項"] || "餐點",
+              spec: i.spec || i["規格"] || "標準",
+              qty: Number(i.qty || i["數量"] || 1),
+              subtotal: Number(i.subtotal || ((i.unitPrice || 0) * (i.qty || 1)))
+            }));
+          } else {
+            parsedItems = [{ name: rawItems.trim(), spec: "標準", qty: 1, subtotal: Number(row.totalAmount || row.total_amount || row["總金額"] || row["金額"] || 0) }];
+          }
+        } catch {
+          parsedItems = [{ name: rawItems.trim(), spec: "標準", qty: 1, subtotal: Number(row.totalAmount || row.total_amount || row["總金額"] || row["金額"] || 0) }];
+        }
+      }
+
+      const rawStatus = String(row.status || row["狀態"] || "UNPAID").trim().toUpperCase();
+      let status = "UNPAID";
+      if (["PAID", "已收款", "製作中", "出餐中"].includes(rawStatus)) {
+        status = "PAID";
+      } else if (["DONE", "已完成", "已出餐", "完成"].includes(rawStatus)) {
+        status = "DONE";
+      } else if (["UNPAID", "待收款", "待確認"].includes(rawStatus)) {
+        status = "UNPAID";
+      }
+
+      const tableVal = row.table || row.tableLabel || row["桌號"] || row["內用/外帶"] || "內用";
+      const amountVal = Number(row.totalAmount ?? row.total_amount ?? row.total ?? row.amount ?? row.price ?? row["應收金額"] ?? row["總金額"] ?? row["金額"] ?? row["應收"] ?? 0);
+      const timeVal = row.createdAt || row.created_at || row["時間"] || new Date().toLocaleTimeString("zh-TW", { hour12: false });
+
+      return {
+        id,
+        orderType: row.orderType || (String(tableVal).includes("外帶") ? "takeout" : "dinein"),
+        table: String(tableVal),
+        items: parsedItems,
+        totalAmount: Number.isFinite(amountVal) ? amountVal : 0,
+        status,
+        createdAt: String(timeVal)
+      };
+    }
+
+    async function syncCounterOrders() {
+      if (!COUNTER_ORDERS_URL || isCustomerQrMode) return;
+      try {
+        const res = await fetch(COUNTER_ORDERS_URL, { method: "GET", cache: "no-store" });
+        if (!res.ok) return;
+        const payload = await res.json();
+        const rawList = Array.isArray(payload)
+          ? payload
+          : (Array.isArray(payload.orders) ? payload.orders : (Array.isArray(payload.data) ? payload.data : []));
+
+        const remoteOrders = rawList.map((item, idx) => normalizeRemoteOrder(item, idx)).filter(Boolean);
+        if (remoteOrders.length === 0) {
+          renderCounterOrders();
+          return;
+        }
+
+        const localOrders = loadOrders();
+        const localMap = new Map(localOrders.map(o => [o.id, o]));
+        const mergedMap = new Map();
+
+        remoteOrders.forEach(ro => {
+          const existing = localMap.get(ro.id);
+          mergedMap.set(ro.id, existing ? { ...ro, status: existing.status || ro.status } : ro);
+        });
+
+        localOrders.forEach(lo => {
+          if (!mergedMap.has(lo.id)) {
+            mergedMap.set(lo.id, lo);
+          }
+        });
+
+        const mergedList = Array.from(mergedMap.values());
+        saveOrders(mergedList);
+        renderCounterOrders();
+      } catch (err) {
+        console.error("同步櫃檯訂單失敗：", err);
+      }
+    }
+
+    function setCounterOrderType(val) {
+      if (isCustomerQrMode) return;
+      if (val === "takeout") {
+        currentModeType = "takeout";
+      } else {
+        currentModeType = "dinein";
+        currentTableNum = String(val);
+        document.getElementById("staff-table-select").value = currentTableNum;
+      }
+      updateTableDisplay();
+    }
+
+    function switchView(viewName) {
+      if (isCustomerQrMode && viewName === "counter") return;
+
+      const customerEl = document.getElementById("view-customer");
+      const goCounterEl = document.getElementById("view-go-counter");
+      const counterEl = document.getElementById("view-counter");
+      const tabCustomer = document.getElementById("tab-customer");
+      const tabCounter = document.getElementById("tab-counter");
+
+      customerEl.classList.add("hidden");
+      goCounterEl.classList.add("hidden");
+      counterEl.classList.add("hidden");
+
+      if (viewName === "counter") {
+        counterEl.classList.remove("hidden");
+        tabCounter.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500 text-slate-950 transition";
+        tabCustomer.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-700 transition";
+        renderCounterOrders();
+        syncCounterOrders();
+      } else if (viewName === "go_counter") {
+        goCounterEl.classList.remove("hidden");
+      } else {
+        customerEl.classList.remove("hidden");
+        if (!isCustomerQrMode) {
+          tabCustomer.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500 text-slate-950 transition";
+          tabCounter.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-700 transition";
+        }
+      }
+    }
+
+    function backToCustomerMenu() {
+      switchView("customer");
+    }
+
+    function getTableDisplayText() {
+      if (currentModeType === "takeout") return "櫃檯外帶";
+      return `內用｜第 ${currentTableNum} 桌`;
+    }
+
+    function getOrderTableLabel() {
+      if (currentModeType === "takeout") return "櫃檯外帶";
+      return `內用第 ${currentTableNum} 桌`;
+    }
+
+    function updateTableDisplay() {
+      const text = getTableDisplayText();
+      document.getElementById("table-display").textContent = text;
+      document.getElementById("cart-modal-table-label").textContent = text;
+    }
+
+    function renderMenu() {
+      const tabsEl = document.getElementById("category-tabs");
+      const menuEl = document.getElementById("menu-container");
+      tabsEl.innerHTML = "";
+      menuEl.innerHTML = "";
+
+      MENU_DATA.forEach((cat, idx) => {
+        const tabBtn = document.createElement("button");
+        tabBtn.type = "button";
+        tabBtn.className = "whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-medium bg-slate-900 border border-slate-800 text-slate-300 hover:border-amber-500 hover:text-amber-400 transition";
+        tabBtn.textContent = cat.category;
+        tabBtn.onclick = () => {
+          document.getElementById(`cat-${idx}`).scrollIntoView({ behavior: "smooth", block: "start" });
+        };
+        tabsEl.appendChild(tabBtn);
+
+        const section = document.createElement("section");
+        section.id = `cat-${idx}`;
+        section.className = "scroll-mt-28";
+        section.innerHTML = `<h2 class="text-base font-bold text-amber-400 mb-3 border-l-4 border-amber-500 pl-2.5">${cat.category}</h2>`;
+
+        const grid = document.createElement("div");
+        grid.className = "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3";
+
+        cat.items.forEach(item => {
+          const effectiveAddon = item.customAddon || cat.addonType;
+          let badgeHtml = "";
+          if (effectiveAddon === "rice") badgeHtml = `<span class="text-[10px] bg-emerald-500/15 text-emerald-400 px-1.5 py-0.5 rounded">可免費加大</span>`;
+          if (effectiveAddon === "noodle") badgeHtml = `<span class="text-[10px] bg-sky-500/15 text-sky-400 px-1.5 py-0.5 rounded">加麵 +$10</span>`;
+          if (effectiveAddon === "udon") badgeHtml = `<span class="text-[10px] bg-purple-500/15 text-purple-400 px-1.5 py-0.5 rounded">加烏龍 +$25</span>`;
+
+          const card = document.createElement("div");
+          card.className = "bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-xl p-3.5 flex items-center justify-between gap-2 transition";
+
+          const infoDiv = document.createElement("div");
+          infoDiv.innerHTML = `
+            <div class="font-semibold text-sm text-white flex items-center gap-1.5 flex-wrap">
+              <span>${item.name}</span>
+              ${badgeHtml}
+            </div>
+            <div class="text-amber-400 font-bold text-sm mt-1">NT$ ${item.price}</div>
+          `;
+
+          const addBtn = document.createElement("button");
+          addBtn.type = "button";
+          addBtn.className = "bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-amber-400 border border-slate-700 hover:border-amber-500 w-8 h-8 rounded-lg font-bold flex items-center justify-center transition shrink-0";
+          addBtn.textContent = "+";
+          addBtn.addEventListener("click", () => openOptionModal(item, effectiveAddon));
+
+          card.appendChild(infoDiv);
+          card.appendChild(addBtn);
+          grid.appendChild(card);
+        });
+
+        section.appendChild(grid);
+        menuEl.appendChild(section);
+      });
+    }
+
+    function openOptionModal(item, addonType) {
+      selectedItem = item;
+      selectedNotes = [];
+      document.querySelectorAll(".note-btn").forEach(b => {
+        b.classList.remove("border-amber-500", "bg-amber-500/20", "text-amber-300");
+        b.classList.add("border-slate-700", "bg-slate-800", "text-slate-300");
+      });
+
+      document.getElementById("modal-item-name").textContent = item.name;
+      document.getElementById("modal-item-price").textContent = `NT$ ${item.price}`;
+
+      const addonSec = document.getElementById("modal-addon-section");
+      const addonOpts = document.getElementById("modal-addon-options");
+      addonOpts.innerHTML = "";
+
+      let choices = [{ label: "正常份量", price: 0 }];
+      if (addonType === "rice") choices.push({ label: "飯類加大 (+$0)", price: 0 });
+      if (addonType === "noodle") choices.push({ label: "炒麵/湯麵加麵 (+$10)", price: 10 });
+      if (addonType === "udon") choices.push({ label: "烏龍麵加麵 (+$25)", price: 25 });
+
+      if (choices.length > 1) {
+        addonSec.classList.remove("hidden");
+        selectedAddon = choices[0];
+        choices.forEach((c, i) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = `addon-btn text-xs py-2 px-3 rounded-lg border text-left transition ${i === 0 ? "border-amber-500 bg-amber-500/20 text-amber-300 font-bold" : "border-slate-700 bg-slate-800 text-slate-300"}`;
+          btn.textContent = c.label;
+          btn.onclick = () => {
+            selectedAddon = c;
+            document.querySelectorAll(".addon-btn").forEach(el => {
+              el.className = "addon-btn text-xs py-2 px-3 rounded-lg border text-left transition border-slate-700 bg-slate-800 text-slate-300";
+            });
+            btn.className = "addon-btn text-xs py-2 px-3 rounded-lg border text-left transition border-amber-500 bg-amber-500/20 text-amber-300 font-bold";
+          };
+          addonOpts.appendChild(btn);
+        });
+      } else {
+        addonSec.classList.add("hidden");
+        selectedAddon = { label: "正常份量", price: 0 };
+      }
+
+      document.getElementById("option-modal").classList.remove("hidden");
+    }
+
+    function closeOptionModal() {
+      document.getElementById("option-modal").classList.add("hidden");
+    }
+
+    function toggleNote(btn, note) {
+      if (selectedNotes.includes(note)) {
+        selectedNotes = selectedNotes.filter(n => n !== note);
+        btn.classList.remove("border-amber-500", "bg-amber-500/20", "text-amber-300");
+        btn.classList.add("border-slate-700", "bg-slate-800", "text-slate-300");
+      } else {
+        selectedNotes.push(note);
+        btn.classList.add("border-amber-500", "bg-amber-500/20", "text-amber-300");
+        btn.classList.remove("border-slate-700", "bg-slate-800", "text-slate-300");
+      }
+    }
+
+    function confirmAddToCart() {
+      const unitPrice = selectedItem.price + selectedAddon.price;
+      const specText = [
+        selectedAddon.label !== "正常份量" ? selectedAddon.label : "",
+        ...selectedNotes
+      ].filter(Boolean).join("、");
+
+      cart.push({
+        id: Date.now(),
+        name: selectedItem.name,
+        spec: specText || "標準",
+        unitPrice,
+        qty: 1
+      });
+      updateCartUI();
+      closeOptionModal();
+    }
+
+    function updateCartUI() {
+      const totalQty = cart.reduce((sum, i) => sum + i.qty, 0);
+      const totalPrice = cart.reduce((sum, i) => sum + i.unitPrice * i.qty, 0);
+      document.getElementById("cart-count").textContent = totalQty;
+      document.getElementById("cart-total").textContent = totalPrice;
+      document.getElementById("modal-cart-total").textContent = totalPrice;
+      document.getElementById("btn-review-order").disabled = totalQty === 0;
+    }
+
+    function openCartModal() {
+      if (cart.length === 0) return;
+      document.getElementById("cart-modal-table-label").textContent = getTableDisplayText();
+      const listEl = document.getElementById("cart-items-list");
+      listEl.innerHTML = "";
+      cart.forEach((item, index) => {
+        const row = document.createElement("div");
+        row.className = "flex items-center justify-between bg-slate-950 border border-slate-800 p-3 rounded-xl";
+        row.innerHTML = `
+          <div>
+            <div class="text-sm font-bold text-white">${item.name}</div>
+            <div class="text-xs text-slate-400">${item.spec}｜單價 $${item.unitPrice}</div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button type="button" onclick="updateItemQty(${index}, -1)" class="w-7 h-7 rounded-lg bg-slate-800 text-slate-300 font-bold">-</button>
+            <span class="text-sm font-bold w-5 text-center">${item.qty}</span>
+            <button type="button" onclick="updateItemQty(${index}, 1)" class="w-7 h-7 rounded-lg bg-slate-800 text-amber-400 font-bold">+</button>
+          </div>
+        `;
+        listEl.appendChild(row);
+      });
+      document.getElementById("cart-modal").classList.remove("hidden");
+    }
+
+    function closeCartModal() {
+      document.getElementById("cart-modal").classList.add("hidden");
+    }
+
+    function updateItemQty(index, delta) {
+      cart[index].qty += delta;
+      if (cart[index].qty <= 0) cart.splice(index, 1);
+      updateCartUI();
+      if (cart.length === 0) closeCartModal();
+      else openCartModal();
+    }
+
+    function loadOrders() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY_ORDERS) || "[]");
+      } catch {
+        return [];
+      }
+    }
+
+    function saveOrders(orders) {
+      localStorage.setItem(STORAGE_KEY_ORDERS, JSON.stringify(orders));
+    }
+
+    function nextOrderId() {
+      const current = Number(localStorage.getItem(STORAGE_KEY_SEQ) || "0") + 1;
+      localStorage.setItem(STORAGE_KEY_SEQ, String(current));
+      return `#${String(current).padStart(3, "0")}`;
+    }
+
+    function submitOrder() {
+      const orderId = nextOrderId();
+      const totalAmount = cart.reduce((sum, i) => sum + i.unitPrice * i.qty, 0);
+      const tableLabel = getOrderTableLabel();
+
+      const newOrder = {
+        id: orderId,
+        orderType: currentModeType,
+        table: tableLabel,
+        items: cart.map(i => ({ name: i.name, spec: i.spec, qty: i.qty, subtotal: i.unitPrice * i.qty })),
+        totalAmount,
+        status: "UNPAID",
+        createdAt: new Date().toLocaleTimeString("zh-TW", { hour12: false })
+      };
+
+      const orders = loadOrders();
+      orders.unshift(newOrder);
+      saveOrders(orders);
+      renderCounterOrders();
+
+      if (N8N_WEBHOOK_URL) {
+        fetch(N8N_WEBHOOK_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(newOrder)
+        }).catch(() => {});
+      }
+
+      document.getElementById("go-counter-order-id").textContent = orderId;
+      document.getElementById("go-counter-table").textContent = getTableDisplayText();
+      document.getElementById("go-counter-amount").textContent = `NT$ ${totalAmount}`;
+      document.getElementById("go-counter-items").innerHTML = newOrder.items
+        .map(item => `<div>• <strong>${item.name}</strong> x${item.qty} <span class="text-slate-400">(${item.spec})</span></div>`)
+        .join("");
+
+      cart = [];
+      updateCartUI();
+      closeCartModal();
+      switchView("go_counter");
+    }
+
+    function updateOrderStatus(orderId, nextStatus) {
+      if (isCustomerQrMode) return;
+      const orders = loadOrders().map(o => o.id === orderId ? { ...o, status: nextStatus } : o);
+      saveOrders(orders);
+      renderCounterOrders();
+    }
+
+    function clearCompletedOrders() {
+      if (isCustomerQrMode) return;
+      const remaining = loadOrders().filter(o => o.status !== "DONE");
+      saveOrders(remaining);
+      renderCounterOrders();
+    }
+
+    function renderCounterOrders() {
+      const orders = loadOrders();
+      const unpaid = orders.filter(o => o.status === "UNPAID");
+      const paid = orders.filter(o => o.status === "PAID");
+
+      document.getElementById("pending-badge").textContent = unpaid.length;
+      document.getElementById("count-unpaid").textContent = unpaid.length;
+      document.getElementById("count-paid").textContent = paid.length;
+
+      const unpaidEl = document.getElementById("orders-unpaid");
+      const paidEl = document.getElementById("orders-paid");
+
+      unpaidEl.innerHTML = unpaid.length === 0
+        ? `<div class="text-xs text-slate-500 text-center py-6">目前沒有待收款訂單</div>`
+        : unpaid.map(o => `
+          <div class="bg-slate-950 border border-slate-800 rounded-xl p-3.5 space-y-2.5">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="font-extrabold text-white text-sm">${o.id}</span>
+                <span class="bg-amber-500/20 text-amber-300 text-xs font-bold px-2 py-0.5 rounded">${o.table}</span>
+              </div>
+              <span class="text-[11px] text-slate-400">${o.createdAt}</span>
+            </div>
+            <div class="space-y-1 text-xs text-slate-300 border-y border-slate-800/80 py-2">
+              ${o.items.map(item => `<div>• <strong>${item.name}</strong> x${item.qty} <span class="text-slate-400">(${item.spec})</span></div>`).join("")}
+            </div>
+            <div class="flex items-center justify-between pt-0.5">
+              <div class="text-sm font-bold text-amber-400">應收 NT$ ${o.totalAmount}</div>
+              <button type="button" onclick="updateOrderStatus('${o.id}', 'PAID')" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs px-3 py-1.5 rounded-lg transition">
+                確認收款並出餐
+              </button>
+            </div>
+          </div>
+        `).join("");
+
+      paidEl.innerHTML = paid.length === 0
+        ? `<div class="text-xs text-slate-500 text-center py-6">目前沒有已收款出餐中的訂單</div>`
+        : paid.map(o => `
+          <div class="bg-slate-950 border border-slate-800 rounded-xl p-3.5 space-y-2.5">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="font-extrabold text-white text-sm">${o.id}</span>
+                <span class="bg-emerald-500/20 text-emerald-300 text-xs font-bold px-2 py-0.5 rounded">${o.table}</span>
+              </div>
+              <span class="text-[11px] text-slate-400">${o.createdAt}</span>
+            </div>
+            <div class="space-y-1 text-xs text-slate-300 border-y border-slate-800/80 py-2">
+              ${o.items.map(item => `<div>• <strong>${item.name}</strong> x${item.qty} <span class="text-slate-400">(${item.spec})</span></div>`).join("")}
+            </div>
+            <div class="flex items-center justify-between pt-0.5">
+              <div class="text-sm font-bold text-emerald-400">已收 NT$ ${o.totalAmount}</div>
+              <button type="button" onclick="updateOrderStatus('${o.id}', 'DONE')" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs px-3 py-1.5 rounded-lg transition">
+                完成出餐
+              </button>
+            </div>
+          </div>
+        `).join("");
+    }
+  </script>
+</body>
+</html>
