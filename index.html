@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>貳參小館｜桌邊掃碼點餐與櫃檯接單系統</title>
+  <title>貳參小館｜內用掃碼點餐與櫃檯全端系統</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
@@ -19,34 +19,51 @@
       <div>
         <div class="flex items-center gap-2">
           <span class="bg-amber-500 text-slate-950 font-bold text-xs px-2 py-0.5 rounded">貳參小館</span>
-          <h1 class="text-base sm:text-lg font-bold tracking-wide text-white">桌邊掃碼點餐系統</h1>
+          <h1 class="text-base sm:text-lg font-bold tracking-wide text-white" id="header-title">桌邊掃碼點餐系統</h1>
         </div>
-        <p class="text-xs text-slate-400 mt-0.5">嘉義市軍輝路 23 號｜點餐後至櫃檯現金結帳出餐</p>
+        <p class="text-xs text-slate-400 mt-0.5">嘉義市軍輝路 23 號｜內用點餐後至櫃檯現金結帳出餐</p>
       </div>
 
-      <!-- 只有非掃碼模式才會顯示視角切換 -->
+      <!-- 只有櫃檯模式才會顯示視角切換 -->
       <div id="staff-nav" class="hidden items-center gap-2">
         <button type="button" id="tab-counter" onclick="switchView('counter')" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500 text-slate-950 transition">
           櫃檯端 (<span id="pending-badge">0</span>)
         </button>
         <button type="button" id="tab-customer" onclick="switchView('customer')" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-700 transition">
-          客人點餐視角
+          代客點餐視角
         </button>
       </div>
     </div>
   </header>
 
-  <!-- 1. 客人點餐畫面 -->
+  <!-- 1. 客人／代客點餐畫面 -->
   <main id="view-customer" class="hidden max-w-5xl mx-auto w-full px-4 py-4 flex-1 pb-28">
     <div class="bg-slate-900 border border-slate-800 rounded-xl p-3.5 mb-4 flex flex-wrap items-center justify-between gap-3">
-      <div class="flex items-center gap-2.5">
+      <div class="flex items-center gap-2.5 flex-wrap">
         <div class="bg-amber-500/15 border border-amber-500/40 text-amber-400 px-3.5 py-1.5 rounded-lg text-sm font-extrabold tracking-wide" id="table-display">
-          尚未選擇用餐方式
+          內用｜第 1 桌
         </div>
-        <button type="button" id="btn-reselect-mode" onclick="openModeModal()" class="hidden bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs px-3 py-1.5 rounded-lg transition">
-          切換內用／外帶
-        </button>
+
+        <!-- 僅櫃檯代客點餐時顯示快速切換（外帶或 1~10 桌），掃碼客人完全看不到 -->
+        <div id="staff-order-type-bar" class="hidden items-center gap-1.5 flex-wrap">
+          <button type="button" onclick="setCounterOrderType('takeout')" id="btn-type-takeout" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-800 text-slate-300 border border-slate-700 hover:border-amber-500 transition">
+            櫃檯外帶
+          </button>
+          <select id="staff-table-select" onchange="setCounterOrderType(this.value)" class="bg-slate-800 border border-slate-700 text-slate-200 text-xs font-bold px-2.5 py-1 rounded-lg">
+            <option value="1">內用 1 桌</option>
+            <option value="2">內用 2 桌</option>
+            <option value="3">內用 3 桌</option>
+            <option value="4">內用 4 桌</option>
+            <option value="5">內用 5 桌</option>
+            <option value="6">內用 6 桌</option>
+            <option value="7">內用 7 桌</option>
+            <option value="8">內用 8 桌</option>
+            <option value="9">內用 9 桌</option>
+            <option value="10">內用 10 桌</option>
+          </select>
+        </div>
       </div>
+
       <div class="text-xs text-slate-400">
         ★ 內用白飯、飲料免費供應｜飯類可免費加大
       </div>
@@ -75,12 +92,45 @@
     </div>
   </main>
 
-  <!-- 2. 櫃檯端畫面（無參數開啟時直接顯示；掃碼客人看不到、進不來） -->
+  <!-- 1B. 送單後「前往櫃檯結帳」畫面 -->
+  <section id="view-go-counter" class="hidden max-w-md mx-auto w-full px-4 py-8 flex-1 flex flex-col justify-center">
+    <div class="bg-slate-900 border border-amber-500/50 rounded-2xl p-6 text-center space-y-5 shadow-2xl">
+      <div class="w-14 h-14 bg-amber-500/20 text-amber-400 rounded-full flex items-center justify-center mx-auto text-3xl font-bold">
+        🚶
+      </div>
+
+      <div class="space-y-1">
+        <div class="text-xs font-bold text-amber-400 tracking-wide">訂單已送出，請前往櫃檯結帳</div>
+        <h2 class="text-3xl font-extrabold text-white" id="go-counter-order-id">#001</h2>
+        <div class="inline-block bg-slate-800 text-slate-200 text-xs font-bold px-3 py-1 rounded-full mt-1" id="go-counter-table">
+          內用｜第 1 桌
+        </div>
+      </div>
+
+      <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 text-left space-y-2.5">
+        <div class="flex items-center justify-between">
+          <span class="text-xs text-slate-400">櫃檯應付現金金額</span>
+          <span class="text-xl font-extrabold text-amber-400" id="go-counter-amount">NT$ 0</span>
+        </div>
+        <div id="go-counter-items" class="text-xs text-slate-300 space-y-1 pt-2 border-t border-slate-800"></div>
+      </div>
+
+      <div class="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 text-xs text-amber-200 leading-relaxed text-left">
+        請持此畫面單號或報桌號至<strong>櫃檯現金付款</strong>，櫃檯確認收款後即開始為您出餐。
+      </div>
+
+      <button type="button" onclick="backToCustomerMenu()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold py-3 rounded-xl text-sm transition">
+        返回點餐畫面（再點一單）
+      </button>
+    </div>
+  </section>
+
+  <!-- 2. 櫃檯全端控制畫面（開主網址直接顯示；掃碼客人看不到、進不來） -->
   <section id="view-counter" class="max-w-5xl mx-auto w-full px-4 py-5 flex-1 space-y-5">
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div>
-        <h2 class="text-lg font-bold text-white">櫃檯接單與收款出餐看板</h2>
-        <p class="text-xs text-slate-400">客人送單後立即顯示於此，客人至櫃檯付款後按「確認收款並出餐」</p>
+        <h2 class="text-lg font-bold text-white">櫃檯全端接單與收款出餐控制</h2>
+        <p class="text-xs text-slate-400">內用掃碼與櫃檯單同步顯示於此，確認收款後即可進入製作出餐與完成</p>
       </div>
       <div class="flex items-center gap-2">
         <button type="button" onclick="renderCounterOrders()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-bold px-3.5 py-2 rounded-xl transition">
@@ -110,36 +160,6 @@
       </div>
     </div>
   </section>
-
-  <!-- 內用／外帶選擇彈窗 -->
-  <div id="mode-modal" class="hidden fixed inset-0 bg-slate-950/95 backdrop-blur-md z-50 flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md p-6 space-y-5 shadow-2xl">
-      <div class="text-center space-y-1.5">
-        <span class="inline-block bg-amber-500 text-slate-950 font-bold text-xs px-2.5 py-0.5 rounded">歡迎光臨 貳參小館</span>
-        <h2 class="text-xl font-extrabold text-white">請選擇用餐方式</h2>
-        <p class="text-xs text-slate-400">選好後即可開始點餐，送單後請至櫃檯現金結帳</p>
-      </div>
-
-      <div class="grid grid-cols-2 gap-3">
-        <button type="button" id="btn-choose-dinein" onclick="expandDineInTables()" class="bg-slate-800 hover:bg-amber-500/20 border-2 border-slate-700 hover:border-amber-500 rounded-2xl p-5 text-center transition group">
-          <div class="text-3xl mb-2">🏠</div>
-          <div class="text-base font-extrabold text-white group-hover:text-amber-400">內用</div>
-          <div class="text-[11px] text-slate-400 mt-1">請點選您的桌號</div>
-        </button>
-
-        <button type="button" onclick="selectMode('takeout')" class="bg-slate-800 hover:bg-amber-500/20 border-2 border-slate-700 hover:border-amber-500 rounded-2xl p-5 text-center transition group">
-          <div class="text-3xl mb-2">🛍️</div>
-          <div class="text-base font-extrabold text-white group-hover:text-amber-400">外帶</div>
-          <div class="text-[11px] text-slate-400 mt-1">直接進入外帶點餐</div>
-        </button>
-      </div>
-
-      <div id="dinein-table-grid" class="hidden pt-3 border-t border-slate-800 space-y-2.5">
-        <div class="text-xs font-bold text-amber-400 text-center">請點選您入座的桌號：</div>
-        <div class="grid grid-cols-5 gap-2" id="table-buttons-container"></div>
-      </div>
-    </div>
-  </div>
 
   <!-- 餐點規格與備註彈窗 -->
   <div id="option-modal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4">
@@ -179,7 +199,7 @@
       <div class="flex justify-between items-center pb-3 border-b border-slate-800">
         <div>
           <h3 class="text-lg font-bold text-white">確認點餐明細</h3>
-          <p class="text-xs text-amber-400 font-semibold mt-0.5" id="cart-modal-table-label">外帶／櫃檯點餐</p>
+          <p class="text-xs text-amber-400 font-semibold mt-0.5" id="cart-modal-table-label">內用｜第 1 桌</p>
         </div>
         <button type="button" onclick="closeCartModal()" class="text-slate-400 hover:text-white text-xl leading-none">&times;</button>
       </div>
@@ -188,48 +208,23 @@
 
       <div class="pt-3 border-t border-slate-800 space-y-3">
         <div class="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 text-xs text-amber-300">
-          ⚠️ 按下確認送出後，請直接走到<strong>櫃檯現金付款</strong>，櫃檯確認收款後才會開始製作出餐。
+          ⚠️ 按下確認送出後，畫面將顯示結帳憑證，請直接走到<strong>櫃檯現金付款</strong>，櫃檯確認收款後即開始出餐。
         </div>
         <div class="flex justify-between items-center text-base font-bold">
           <span>應付總金額</span>
           <span class="text-amber-400 text-xl">NT$ <span id="modal-cart-total">0</span></span>
         </div>
         <button type="button" id="btn-submit-order" onclick="submitOrder()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 rounded-xl text-sm transition">
-          確認送出訂單至櫃檯
+          確認送出並前往櫃檯結帳
         </button>
       </div>
-    </div>
-  </div>
-
-  <!-- 送單完成／請至櫃檯結帳憑證 -->
-  <div id="receipt-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-amber-500/50 rounded-2xl w-full max-w-md p-6 text-center space-y-4">
-      <div class="w-12 h-12 bg-amber-500/20 text-amber-400 rounded-full flex items-center justify-center mx-auto text-2xl">✓</div>
-      <div>
-        <div class="text-xs text-slate-400">已送達櫃檯，請至櫃檯現金結帳</div>
-        <h3 class="text-2xl font-extrabold text-white mt-1" id="receipt-order-id">#001</h3>
-        <div class="inline-block bg-slate-800 text-amber-400 text-xs font-bold px-3 py-1 rounded-full mt-2" id="receipt-table">外帶</div>
-      </div>
-
-      <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 text-left space-y-2">
-        <div class="flex justify-between text-sm">
-          <span class="text-slate-400">應付現金金額</span>
-          <span class="font-bold text-amber-400 text-lg" id="receipt-amount">NT$ 0</span>
-        </div>
-        <div class="text-xs text-amber-300 pt-2 border-t border-slate-800 leading-relaxed">
-          ● 請拿此單號或報桌號至櫃檯付款，櫃檯確認收款後即開始出餐。
-        </div>
-      </div>
-
-      <button type="button" onclick="closeReceiptModal()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 rounded-xl text-sm transition">
-        繼續點餐
-      </button>
     </div>
   </div>
 
   <script>
     const STORAGE_KEY_ORDERS = "ersan_counter_orders_v1";
     const STORAGE_KEY_SEQ = "ersan_counter_seq_v1";
+    const N8N_WEBHOOK_URL = "https://primary-production-5317642b.up.railway.app/webhook/ersan-order";
 
     const MENU_DATA = [
       {
@@ -388,7 +383,9 @@
       }
     ];
 
-    let currentTable = "takeout";
+    // currentModeType: "dinein" (內用) 或 "takeout" (櫃檯外帶)
+    let currentModeType = "dinein";
+    let currentTableNum = "1";
     let isCustomerQrMode = false;
     let cart = [];
     let selectedItem = null;
@@ -396,28 +393,36 @@
     let selectedNotes = [];
 
     window.addEventListener("DOMContentLoaded", () => {
-      renderTableButtons();
       renderMenu();
       renderCounterOrders();
 
+      // 只認掃碼內用桌號（?table=1 到 ?table=10）；外帶不走掃碼
       const params = new URLSearchParams(window.location.search);
-      const tableParam = (params.get("table") || "").trim().toLowerCase();
-      const isValidQrTable = tableParam === "takeout" || (Number(tableParam) >= 1 && Number(tableParam) <= 10);
+      const tableParam = (params.get("table") || "").trim();
+      const tableNum = Number(tableParam);
+      const isValidQrDineIn = tableParam !== "" && Number.isInteger(tableNum) && tableNum >= 1 && tableNum <= 10;
 
-      if (isValidQrTable) {
+      if (isValidQrDineIn) {
+        // 客人掃碼：固定內用該桌號，直接進點餐畫面，隱藏櫃檯端
         isCustomerQrMode = true;
-        currentTable = tableParam;
+        currentModeType = "dinein";
+        currentTableNum = String(tableNum);
+        document.getElementById("header-title").textContent = "內用掃碼點餐系統";
         document.getElementById("staff-nav").classList.add("hidden");
         document.getElementById("staff-nav").classList.remove("flex");
-        document.getElementById("view-counter").classList.add("hidden");
-        document.getElementById("view-customer").classList.remove("hidden");
+        document.getElementById("staff-order-type-bar").classList.add("hidden");
+        document.getElementById("staff-order-type-bar").classList.remove("flex");
         updateTableDisplay();
+        switchView("customer");
       } else {
+        // 櫃檯全端：直接進櫃檯端，代客點餐時可切外帶或 1~10 桌
         isCustomerQrMode = false;
-        currentTable = "takeout";
+        currentModeType = "takeout";
+        document.getElementById("header-title").textContent = "櫃檯全端接單系統";
         document.getElementById("staff-nav").classList.remove("hidden");
         document.getElementById("staff-nav").classList.add("flex");
-        document.getElementById("btn-reselect-mode").classList.remove("hidden");
+        document.getElementById("staff-order-type-bar").classList.remove("hidden");
+        document.getElementById("staff-order-type-bar").classList.add("flex");
         updateTableDisplay();
         switchView("counter");
       }
@@ -429,65 +434,59 @@
       });
     });
 
-    function switchView(viewName) {
+    function setCounterOrderType(val) {
       if (isCustomerQrMode) return;
+      if (val === "takeout") {
+        currentModeType = "takeout";
+      } else {
+        currentModeType = "dinein";
+        currentTableNum = String(val);
+        document.getElementById("staff-table-select").value = currentTableNum;
+      }
+      updateTableDisplay();
+    }
+
+    function switchView(viewName) {
+      if (isCustomerQrMode && viewName === "counter") return;
 
       const customerEl = document.getElementById("view-customer");
+      const goCounterEl = document.getElementById("view-go-counter");
       const counterEl = document.getElementById("view-counter");
       const tabCustomer = document.getElementById("tab-customer");
       const tabCounter = document.getElementById("tab-counter");
 
+      customerEl.classList.add("hidden");
+      goCounterEl.classList.add("hidden");
+      counterEl.classList.add("hidden");
+
       if (viewName === "counter") {
-        customerEl.classList.add("hidden");
         counterEl.classList.remove("hidden");
         tabCounter.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500 text-slate-950 transition";
         tabCustomer.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-700 transition";
         renderCounterOrders();
+      } else if (viewName === "go_counter") {
+        goCounterEl.classList.remove("hidden");
       } else {
-        counterEl.classList.add("hidden");
         customerEl.classList.remove("hidden");
-        tabCustomer.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500 text-slate-950 transition";
-        tabCounter.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-700 transition";
+        if (!isCustomerQrMode) {
+          tabCustomer.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500 text-slate-950 transition";
+          tabCounter.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-700 transition";
+        }
       }
     }
 
-    function renderTableButtons() {
-      const container = document.getElementById("table-buttons-container");
-      container.innerHTML = "";
-      for (let i = 1; i <= 10; i++) {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "bg-slate-800 hover:bg-amber-500 hover:text-slate-950 border border-slate-700 hover:border-amber-500 text-white font-bold py-2.5 rounded-xl text-sm transition";
-        btn.textContent = `${i} 桌`;
-        btn.onclick = () => selectMode(String(i));
-        container.appendChild(btn);
-      }
-    }
-
-    function openModeModal() {
-      document.getElementById("dinein-table-grid").classList.add("hidden");
-      document.getElementById("btn-choose-dinein").classList.remove("border-amber-500", "bg-amber-500/20");
-      document.getElementById("mode-modal").classList.remove("hidden");
-    }
-
-    function expandDineInTables() {
-      document.getElementById("dinein-table-grid").classList.remove("hidden");
-      document.getElementById("btn-choose-dinein").classList.add("border-amber-500", "bg-amber-500/20");
-    }
-
-    function selectMode(val) {
-      currentTable = val;
-      updateTableDisplay();
-      document.getElementById("mode-modal").classList.add("hidden");
+    function backToCustomerMenu() {
+      switchView("customer");
     }
 
     function getTableDisplayText() {
-      if (!currentTable) return "外帶";
-      return currentTable === "takeout" ? "外帶" : `內用｜第 ${currentTable} 桌`;
+      if (currentModeType === "takeout") return "櫃檯外帶";
+      return `內用｜第 ${currentTableNum} 桌`;
     }
 
     function getOrderTableLabel() {
-      return currentTable === "takeout" ? "外帶" : `第 ${currentTable} 桌`;
+      if (currentModeType === "takeout") return "櫃檯外帶";
+      return `內用第 ${currentTableNum} 桌`;
     }
 
     function updateTableDisplay() {
@@ -704,6 +703,7 @@
 
       const newOrder = {
         id: orderId,
+        orderType: currentModeType,
         table: tableLabel,
         items: cart.map(i => ({ name: i.name, spec: i.spec, qty: i.qty, subtotal: i.unitPrice * i.qty })),
         totalAmount,
@@ -716,18 +716,25 @@
       saveOrders(orders);
       renderCounterOrders();
 
+      if (N8N_WEBHOOK_URL) {
+        fetch(N8N_WEBHOOK_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(newOrder)
+        }).catch(() => {});
+      }
+
+      document.getElementById("go-counter-order-id").textContent = orderId;
+      document.getElementById("go-counter-table").textContent = getTableDisplayText();
+      document.getElementById("go-counter-amount").textContent = `NT$ ${totalAmount}`;
+      document.getElementById("go-counter-items").innerHTML = newOrder.items
+        .map(item => `<div>• <strong>${item.name}</strong> x${item.qty} <span class="text-slate-400">(${item.spec})</span></div>`)
+        .join("");
+
       cart = [];
       updateCartUI();
       closeCartModal();
-
-      document.getElementById("receipt-order-id").textContent = orderId;
-      document.getElementById("receipt-table").textContent = tableLabel;
-      document.getElementById("receipt-amount").textContent = `NT$ ${totalAmount}`;
-      document.getElementById("receipt-modal").classList.remove("hidden");
-    }
-
-    function closeReceiptModal() {
-      document.getElementById("receipt-modal").classList.add("hidden");
+      switchView("go_counter");
     }
 
     function updateOrderStatus(orderId, nextStatus) {
