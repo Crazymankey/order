@@ -3,828 +3,378 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>貳參小館｜桌邊掃碼點餐與櫃檯核銷系統</title>
+  <title>貳參小館｜手機掃碼點餐</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
-    .no-scrollbar::-webkit-scrollbar { display: none; }
-    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
   </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col">
+<body class="bg-stone-100 text-stone-900 min-h-screen pb-28">
 
-  <!-- 頂部導覽列：品牌標題與視角切換 -->
-  <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-30">
-    <div class="max-w-5xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-2">
+  <!-- 頂部店名與用餐方式狀態列 -->
+  <header class="bg-slate-900 text-white sticky top-0 z-30 shadow-md">
+    <div class="max-w-2xl mx-auto px-4 py-3.5 flex items-center justify-between gap-3">
       <div>
         <div class="flex items-center gap-2">
-          <span class="bg-amber-500 text-slate-950 font-bold text-xs px-2 py-0.5 rounded">貳參小館</span>
-          <h1 class="text-base sm:text-lg font-bold tracking-wide text-white">桌邊掃碼點餐系統</h1>
+          <span class="bg-amber-500 text-slate-950 text-xs font-extrabold px-2 py-0.5 rounded">貳參小館</span>
+          <h1 class="text-base sm:text-lg font-bold tracking-wide">線上點餐</h1>
         </div>
-        <p class="text-xs text-slate-400 mt-0.5">嘉義市東區軍輝路23號｜先至櫃檯現金付款才做餐</p>
+        <p class="text-[11px] text-slate-400 mt-0.5">嘉義市軍輝路 23 號・送單後請至櫃檯現金結帳</p>
       </div>
 
-      <!-- 雙視角切換器 -->
-      <div class="flex items-center bg-slate-800 p-1 rounded-lg border border-slate-700">
-        <button id="btn-view-customer" onclick="switchView('customer')" class="px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium bg-amber-500 text-slate-950 transition">
-          📱 客人點餐視角
-        </button>
-        <button id="btn-view-counter" onclick="switchView('counter')" class="px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium text-slate-300 hover:text-white transition relative">
-          🖥️ 櫃檯核銷看板
-          <span id="pending-badge" class="hidden absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">0</span>
-        </button>
-      </div>
+      <button
+        type="button"
+        onclick="openModeModal()"
+        class="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-amber-300 text-xs font-bold px-3 py-2 rounded-xl transition shrink-0 cursor-pointer"
+      >
+        <span id="current-mode-badge">尚未選擇</span> ✎
+      </button>
     </div>
   </header>
 
-  <!-- ==================== 視角一：客人點餐介面 ==================== -->
-  <main id="view-customer" class="max-w-5xl mx-auto w-full px-4 py-4 flex-1 pb-28">
-    
-    <!-- 桌號與用餐方式狀態列 -->
-    <div class="bg-slate-900 border border-slate-800 rounded-xl p-3.5 mb-4 flex flex-wrap items-center justify-between gap-3">
-      <div class="flex items-center gap-2.5">
-        <div class="bg-amber-500/15 border border-amber-500/40 text-amber-400 px-3.5 py-1.5 rounded-lg text-sm font-extrabold tracking-wide" id="table-display">
-          尚未選擇用餐方式
-        </div>
-        <!-- 僅在未掃專屬桌牌 QR Code 時顯示「重新選擇」按鈕，掃專屬桌碼時自動隱藏防誤觸 -->
-        <button id="btn-reselect-mode" onclick="openModeModal()" class="hidden bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs px-3 py-1.5 rounded-lg transition">
-          切換內用／外帶
+  <!-- 強制內用 / 外帶選擇 Modal（每次進入或尚未選定時顯示，避免輸入錯誤） -->
+  <div id="mode-modal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white text-slate-900 rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200">
+      <div class="text-xs font-extrabold tracking-wider text-amber-600 uppercase">貳參小館・點餐前確認</div>
+      <h2 class="text-xl font-black mt-1">請選擇用餐方式</h2>
+      <p class="text-xs text-slate-500 mt-1">為避免桌號或外帶填寫錯誤，請先確認您的用餐方式與桌號。</p>
+
+      <div class="grid grid-cols-2 gap-3 mt-5">
+        <button
+          type="button"
+          id="btn-select-dinein"
+          onclick="chooseMode('dinein')"
+          class="p-4 rounded-2xl border-2 border-slate-200 hover:border-amber-500 bg-slate-50 text-left transition cursor-pointer"
+        >
+          <div class="text-2xl mb-1">🍽️</div>
+          <div class="font-black text-base">內用</div>
+          <div class="text-[11px] text-slate-500 mt-0.5">選擇第 1～10 桌</div>
         </button>
-      </div>
-      <div class="text-xs text-slate-400">
-        ★ 內用白飯、飲料免費供應｜飯類可免費加大
-      </div>
-    </div>
 
-    <!-- 分類快速導覽列 -->
-    <div id="category-tabs" class="flex gap-2 overflow-x-auto no-scrollbar pb-3 mb-2 sticky top-[61px] bg-slate-950/95 backdrop-blur z-20 pt-1">
-      <!-- JS 動態生成分類按鈕 -->
-    </div>
-
-    <!-- 菜單列表區 -->
-    <div id="menu-container" class="space-y-6">
-      <!-- JS 動態生成菜單卡片 -->
-    </div>
-
-    <!-- 底部購物車浮動列 -->
-    <div id="cart-bar" class="fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur border-t border-slate-800 p-3 z-30">
-      <div class="max-w-5xl mx-auto flex items-center justify-between gap-4">
-        <div onclick="openCartModal()" class="cursor-pointer flex items-center gap-3">
-          <div class="relative bg-slate-800 p-2.5 rounded-xl border border-slate-700">
-            🛒
-            <span id="cart-count" class="absolute -top-1.5 -right-1.5 bg-amber-500 text-slate-950 text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">0</span>
-          </div>
-          <div>
-            <div class="text-xs text-slate-400">點此查看明細</div>
-            <div class="text-lg font-bold text-amber-400">NT$ <span id="cart-total">0</span></div>
-          </div>
-        </div>
-        <button onclick="openCartModal()" id="btn-review-order" disabled class="bg-amber-500 disabled:bg-slate-800 disabled:text-slate-500 text-slate-950 font-bold px-6 py-2.5 rounded-xl text-sm transition">
-          確認餐點明細
-        </button>
-      </div>
-    </div>
-  </main>
-
-  <!-- ==================== 視角二：櫃檯核銷看板 & n8n 設定 ==================== -->
-  <main id="view-counter" class="hidden max-w-5xl mx-auto w-full px-4 py-6 flex-1 space-y-6">
-    
-    <!-- 流程說明與 n8n Webhook 設定折疊區 -->
-    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
-      <div class="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h2 class="text-sm font-bold text-amber-400">⚙️ 現場無 POS API 解決方案（先付款、後出單）</h2>
-          <p class="text-xs text-slate-400 mt-1">客人送出訂單後通知櫃檯 Telegram → 客人至櫃檯付現 → 店員點擊「確認收款」並同步於小當家 POS 按單讓 T300 出單。</p>
-        </div>
-        <button onclick="toggleN8nConfig()" class="text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3 py-1.5 rounded-lg text-slate-200">
-          🔗 設定 n8n Webhook
+        <button
+          type="button"
+          id="btn-select-takeout"
+          onclick="chooseMode('takeout')"
+          class="p-4 rounded-2xl border-2 border-slate-200 hover:border-amber-500 bg-slate-50 text-left transition cursor-pointer"
+        >
+          <div class="text-2xl mb-1">🛍️</div>
+          <div class="font-black text-base">外帶</div>
+          <div class="text-[11px] text-slate-500 mt-0.5">櫃檯取餐現金付款</div>
         </button>
       </div>
 
-      <!-- n8n Webhook 設定面板 -->
-      <div id="n8n-config-panel" class="hidden mt-4 pt-4 border-t border-slate-800 space-y-3">
-        <div>
-          <label class="block text-xs text-slate-300 mb-1">n8n Production Webhook URL（已內建預設正式網址，若有異動可於此修改）</label>
-          <div class="flex gap-2">
-            <input type="url" id="webhook-url-input" placeholder="https://primary-production-5317642b.up.railway.app/webhook/ersan-order" class="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500" />
-            <button onclick="saveWebhookUrl()" class="bg-amber-500 text-slate-950 font-bold px-4 py-1.5 rounded-lg text-xs">儲存設定</button>
-          </div>
-          <p id="webhook-status" class="text-[11px] text-slate-400 mt-1">目前狀態：已設定 n8n Webhook（送出訂單將同步發送 POST 請求）</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- 訂單狀態看板 -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <!-- 待櫃檯收款 -->
-      <div>
-        <h3 class="text-sm font-bold text-rose-400 mb-3 flex items-center gap-2">
-          <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
-          待櫃檯現金付款（尚未做餐）
-        </h3>
-        <div id="orders-pending" class="space-y-3">
-          <div class="text-xs text-slate-500 bg-slate-900/50 border border-slate-800/80 rounded-xl p-6 text-center">目前沒有待付款訂單</div>
-        </div>
+      <!-- 內用桌號選擇區 -->
+      <div id="table-picker-box" class="hidden mt-5 pt-4 border-t border-slate-200">
+        <div class="text-xs font-bold text-slate-700 mb-2.5">請點選您的桌號（第 1～10 桌）：</div>
+        <div id="table-buttons-grid" class="grid grid-cols-5 gap-2"></div>
       </div>
 
-      <!-- 已收款／POS 已出單製作中 -->
-      <div>
-        <h3 class="text-sm font-bold text-emerald-400 mb-3 flex items-center gap-2">
-          <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-          已收款（小當家 POS 已出單製作中）
-        </h3>
-        <div id="orders-paid" class="space-y-3">
-          <div class="text-xs text-slate-500 bg-slate-900/50 border border-slate-800/80 rounded-xl p-6 text-center">尚無已核銷訂單</div>
-        </div>
-      </div>
-    </div>
-  </main>
-
-  <!-- ==================== 彈窗：強制選擇用餐方式（無網址桌號參數時觸發） ==================== -->
-  <div id="mode-modal" class="hidden fixed inset-0 bg-slate-950/95 backdrop-blur-md z-50 flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md p-6 space-y-5 shadow-2xl">
-      <div class="text-center space-y-1.5">
-        <span class="inline-block bg-amber-500 text-slate-950 font-bold text-xs px-2.5 py-0.5 rounded">歡迎光臨 貳參小館</span>
-        <h2 class="text-xl font-extrabold text-white">請選擇用餐方式</h2>
-        <p class="text-xs text-slate-400">選好後即可開始點餐，送單後請至櫃檯現金結帳</p>
-      </div>
-
-      <!-- 內用 / 外帶 兩大按鈕 -->
-      <div class="grid grid-cols-2 gap-3">
-        <button type="button" id="btn-choose-dinein" onclick="expandDineInTables()" class="bg-slate-800 hover:bg-amber-500/20 border-2 border-slate-700 hover:border-amber-500 rounded-2xl p-5 text-center transition group">
-          <div class="text-3xl mb-2">🏠</div>
-          <div class="text-base font-extrabold text-white group-hover:text-amber-400">內用</div>
-          <div class="text-[11px] text-slate-400 mt-1">請點選您的桌號</div>
-        </button>
-
-        <button type="button" onclick="selectMode('takeout')" class="bg-slate-800 hover:bg-amber-500/20 border-2 border-slate-700 hover:border-amber-500 rounded-2xl p-5 text-center transition group">
-          <div class="text-3xl mb-2">🛍️</div>
-          <div class="text-base font-extrabold text-white group-hover:text-amber-400">外帶</div>
-          <div class="text-[11px] text-slate-400 mt-1">直接進入外帶點餐</div>
-        </button>
-      </div>
-
-      <!-- 點選「內用」後展開的 1~10 桌按鈕網格 -->
-      <div id="dinein-table-grid" class="hidden pt-3 border-t border-slate-800 space-y-2.5">
-        <div class="text-xs font-bold text-amber-400 text-center">請點選您入座的桌號：</div>
-        <div class="grid grid-cols-5 gap-2" id="table-buttons-container">
-          <!-- JS 動態生成 1~10 桌按鈕 -->
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ==================== 彈窗：客製化加料選項 ==================== -->
-  <div id="option-modal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md p-5 space-y-4">
-      <div class="flex justify-between items-start">
-        <div>
-          <h3 id="modal-item-name" class="text-lg font-bold text-white">品項名稱</h3>
-          <p id="modal-item-price" class="text-sm text-amber-400 font-semibold">NT$ 0</p>
-        </div>
-        <button onclick="closeOptionModal()" class="text-slate-400 hover:text-white text-xl leading-none">&times;</button>
-      </div>
-
-      <div id="modal-addon-section" class="space-y-2">
-        <label class="block text-xs font-semibold text-slate-300">份量／加麵選擇</label>
-        <div id="modal-addon-options" class="grid grid-cols-2 gap-2"></div>
-      </div>
-
-      <div class="space-y-2">
-        <label class="block text-xs font-semibold text-slate-300">口味備註（可複選）</label>
-        <div class="flex flex-wrap gap-2" id="modal-notes-options">
-          <button type="button" onclick="toggleNote(this, '不要蔥')" class="note-btn text-xs border border-slate-700 bg-slate-800 px-3 py-1.5 rounded-lg text-slate-300">不要蔥</button>
-          <button type="button" onclick="toggleNote(this, '小辣')" class="note-btn text-xs border border-slate-700 bg-slate-800 px-3 py-1.5 rounded-lg text-slate-300">小辣</button>
-          <button type="button" onclick="toggleNote(this, '中辣')" class="note-btn text-xs border border-slate-700 bg-slate-800 px-3 py-1.5 rounded-lg text-slate-300">中辣</button>
-          <button type="button" onclick="toggleNote(this, '不要胡椒')" class="note-btn text-xs border border-slate-700 bg-slate-800 px-3 py-1.5 rounded-lg text-slate-300">不要胡椒</button>
-        </div>
-      </div>
-
-      <button onclick="confirmAddToCart()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 rounded-xl text-sm transition">
-        加入購物車
+      <button
+        type="button"
+        id="confirm-mode-btn"
+        onclick="confirmModeSelection()"
+        disabled
+        class="mt-6 w-full py-3.5 rounded-2xl font-extrabold text-sm bg-slate-200 text-slate-400 transition disabled:cursor-not-allowed cursor-pointer"
+      >
+        確認並開始點餐
       </button>
     </div>
   </div>
 
-  <!-- ==================== 彈窗：購物車確認與送出 ==================== -->
-  <div id="cart-modal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md p-5 max-h-[85vh] flex flex-col">
-      <div class="flex justify-between items-center pb-3 border-b border-slate-800">
-        <div>
-          <h3 class="text-lg font-bold text-white">確認點餐明細</h3>
-          <p class="text-xs text-amber-400 font-semibold mt-0.5" id="cart-modal-table-label">內用｜第 1 桌</p>
-        </div>
-        <button onclick="closeCartModal()" class="text-slate-400 hover:text-white text-xl leading-none">&times;</button>
-      </div>
-
-      <div id="cart-items-list" class="py-3 overflow-y-auto flex-1 space-y-3"></div>
-
-      <div class="pt-3 border-t border-slate-800 space-y-3">
-        <div class="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 text-xs text-amber-300">
-          ⚠️ 送出訂單後，請直接前往<strong>櫃檯現金付款</strong>，櫃檯確認收款後廚房才會開始製作餐點。
-        </div>
-        <div class="flex justify-between items-center text-base font-bold">
-          <span>應付總金額</span>
-          <span class="text-amber-400 text-xl">NT$ <span id="modal-cart-total">0</span></span>
-        </div>
-        <button onclick="submitOrder()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 rounded-xl text-sm transition">
-          送出訂單並前往櫃檯付款
-        </button>
+  <!-- 主菜單內容區 -->
+  <main class="max-w-2xl mx-auto px-4 pt-5 space-y-6">
+    <!-- 提醒橫幅 -->
+    <div class="bg-amber-50 border border-amber-200 text-amber-950 rounded-2xl p-3.5 text-xs leading-relaxed flex items-start gap-2.5">
+      <span class="text-base shrink-0">💡</span>
+      <div>
+        送出訂單後系統會即時通知櫃檯，請持手機畫面或報桌號／外帶至櫃檯完成現金結帳，櫃檯確認後將為您安排出餐。
       </div>
     </div>
-  </div>
 
-  <!-- ==================== 彈窗：客人結帳憑證（純用餐引導） ==================== -->
-  <div id="receipt-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-amber-500/50 rounded-2xl w-full max-w-md p-6 text-center space-y-4">
-      <div class="w-12 h-12 bg-amber-500/20 text-amber-400 rounded-full flex items-center justify-center mx-auto text-2xl">✓</div>
+    <!-- 餐點清單容器 -->
+    <section id="menu-container" class="space-y-4"></section>
+
+    <!-- 備註欄位 -->
+    <section class="bg-white rounded-2xl p-4 shadow-xs border border-slate-200">
+      <label for="order-note" class="block text-sm font-bold text-slate-800 mb-2">
+        📝 餐點備註（選填）
+      </label>
+      <input
+        id="order-note"
+        type="text"
+        maxlength="100"
+        placeholder="例如：不要香菜、少辣、湯麵分開等"
+        class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+      />
+    </section>
+  </main>
+
+  <!-- 底部購物車送出列 -->
+  <footer class="fixed bottom-0 inset-x-0 z-30 bg-white/95 backdrop-blur-xs border-t border-slate-200 shadow-lg">
+    <div class="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
       <div>
-        <div class="text-xs text-slate-400">點餐完成，請至櫃檯現金結帳</div>
-        <h3 class="text-2xl font-extrabold text-white mt-1" id="receipt-order-id">#001</h3>
-        <div class="inline-block bg-slate-800 text-amber-400 text-xs font-bold px-3 py-1 rounded-full mt-2" id="receipt-table">第 1 桌</div>
+        <div class="text-xs text-slate-500">已選 <span id="cart-count" class="font-bold text-slate-900">0</span> 份餐點</div>
+        <div class="text-lg font-black text-slate-900">合計 $<span id="cart-total">0</span></div>
       </div>
 
-      <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 text-left space-y-2">
-        <div class="flex justify-between text-sm">
-          <span class="text-slate-400">應付現金金額</span>
-          <span class="font-bold text-amber-400 text-lg" id="receipt-amount">NT$ 0</span>
-        </div>
-        <div class="text-xs text-amber-300 pt-2 border-t border-slate-800 leading-relaxed">
-          ● 付款完成後才會開始製作餐點，歡迎入座稍候。
-        </div>
-      </div>
-
-      <button onclick="closeReceiptModal()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 rounded-xl text-sm transition">
-        繼續點餐
+      <button
+        type="button"
+        id="submit-order-btn"
+        onclick="submitOrder()"
+        disabled
+        class="bg-amber-500 hover:bg-amber-400 disabled:bg-slate-200 disabled:text-slate-400 text-slate-950 font-black px-6 py-3 rounded-2xl text-sm transition disabled:cursor-not-allowed cursor-pointer"
+      >
+        送出訂單
       </button>
+    </div>
+  </footer>
+
+  <!-- 送單完成憑證 Modal -->
+  <div id="receipt-modal" class="hidden fixed inset-0 z-50 bg-slate-950/75 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl">
+      <div class="text-center">
+        <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-emerald-100 text-emerald-700 text-2xl mb-2">✓</div>
+        <h3 class="text-xl font-black text-slate-900">訂單已送出</h3>
+        <p class="text-xs text-slate-500 mt-1">請至櫃檯現金結帳，櫃檯將為您處理出餐</p>
+      </div>
+
+      <div id="receipt-detail" class="mt-4 bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs space-y-2"></div>
+
+      <div class="mt-5 flex gap-2.5">
+        <button
+          type="button"
+          onclick="closeReceiptModal(false)"
+          class="flex-1 py-3 rounded-2xl border border-slate-300 font-bold text-xs text-slate-700 hover:bg-slate-100 cursor-pointer"
+        >
+          繼續加點
+        </button>
+        <button
+          type="button"
+          onclick="closeReceiptModal(true)"
+          class="flex-1 py-3 rounded-2xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 cursor-pointer"
+        >
+          完成並清空
+        </button>
+      </div>
     </div>
   </div>
 
   <script>
-    const DEFAULT_WEBHOOK_URL = "https://primary-production-5317642b.up.railway.app/webhook/ersan-order";
+    // =========================================================================
+    // 請將下方 N8N_WEBHOOK_URL 替換為你的 n8n Webhook 網址（推播至 Telegram）
+    // =========================================================================
+    const N8N_WEBHOOK_URL = "https://你的-n8n-網域/webhook/rice-order";
 
-    // 貳參小館完整 15 大分類菜單資料
-    const MENU_DATA = [
-      {
-        category: "台式炒飯",
-        addonType: "rice",
-        items: [
-          { name: "黃金蛋炒飯", price: 55 },
-          { name: "肉絲蛋炒飯", price: 75 },
-          { name: "鮭魚蛋炒飯", price: 90 },
-          { name: "蝦仁蛋炒飯", price: 95 },
-          { name: "牛肉蛋炒飯", price: 100 },
-          { name: "黃金豬排蛋炒飯", price: 95 },
-          { name: "卡拉雞腿蛋炒飯", price: 100 },
-          { name: "酥炸唐揚雞蛋炒飯", price: 120 },
-          { name: "鐵路豬排蛋炒飯", price: 120 }
-        ]
-      },
-      {
-        category: "港式炒飯",
-        addonType: "rice",
-        items: [
-          { name: "海鮮魚子炒飯", price: 130 },
-          { name: "港式臘味炒飯", price: 140 }
-        ]
-      },
-      {
-        category: "炒麵、河粉",
-        addonType: "noodle_dynamic",
-        items: [
-          { name: "什錦炒麵", price: 100, customAddon: "noodle" },
-          { name: "日式炒烏龍（豬）", price: 120, customAddon: "udon" },
-          { name: "日式炒烏龍（牛）", price: 130, customAddon: "udon" },
-          { name: "乾炒豬河粉", price: 135, customAddon: "none" },
-          { name: "乾炒牛河粉", price: 155, customAddon: "none" }
-        ]
-      },
-      {
-        category: "飯類",
-        addonType: "none",
-        items: [
-          { name: "肉燥飯（大）", price: 60 },
-          { name: "肉燥飯（小）", price: 40 }
-        ]
-      },
-      {
-        category: "豬肉",
-        addonType: "none",
-        items: [
-          { name: "蔥爆豬肉", price: 120 },
-          { name: "客家小炒", price: 140 },
-          { name: "酥炸紅糟肉", price: 160 },
-          { name: "港式咕咾肉", price: 160 },
-          { name: "川味水煮豬", price: 170 }
-        ]
-      },
-      {
-        category: "牛肉",
-        addonType: "none",
-        items: [
-          { name: "空心菜炒牛肉", price: 150 },
-          { name: "蔥爆牛肉", price: 160 },
-          { name: "川味水煮牛", price: 180 }
-        ]
-      },
-      {
-        category: "雞肉",
-        addonType: "none",
-        items: [
-          { name: "蠔油醬爆雞丁", price: 140 },
-          { name: "川味宮保雞丁", price: 160 },
-          { name: "三杯雞丁", price: 160 }
-        ]
-      },
-      {
-        category: "海鮮類",
-        addonType: "none",
-        items: [
-          { name: "月亮蝦餅", price: 140 },
-          { name: "酸甜糖醋魚柳", price: 150 },
-          { name: "香酥避風塘魚柳", price: 170 },
-          { name: "宮保蝦球", price: 190 },
-          { name: "香酥避風塘蝦球", price: 190 },
-          { name: "塔香蛤蜊", price: 170 },
-          { name: "東石鮮蝦捲", price: 100 },
-          { name: "東石鮮蚵捲", price: 100 }
-        ]
-      },
-      {
-        category: "田園時蔬、豆腐",
-        addonType: "none",
-        items: [
-          { name: "季節炒時蔬", price: 80 },
-          { name: "川味麻婆豆腐", price: 110 },
-          { name: "三鮮豆腐煲", price: 170 }
-        ]
-      },
-      {
-        category: "蛋類",
-        addonType: "none",
-        items: [
-          { name: "香蔥烘蛋", price: 70 },
-          { name: "九層塔烘蛋", price: 80 },
-          { name: "蝦仁烘蛋", price: 130 }
-        ]
-      },
-      {
-        category: "酥炸點心",
-        addonType: "none",
-        items: [
-          { name: "奶油可樂餅", price: 20 },
-          { name: "酥炸金黃薯條", price: 40 },
-          { name: "酥炸雞塊（1份6塊）", price: 55 },
-          { name: "日式唐揚雞", price: 65 },
-          { name: "酥炸卡拉雞腿", price: 45 },
-          { name: "日式炸豬排", price: 50 },
-          { name: "炸蝦天婦羅", price: 100 },
-          { name: "酥炸水餃", price: 40 }
-        ]
-      },
-      {
-        category: "湯品",
-        addonType: "none",
-        items: [
-          { name: "青菜蛋花湯", price: 25 },
-          { name: "紫菜蛋花湯", price: 30 },
-          { name: "貢丸湯", price: 30 },
-          { name: "魚丸湯", price: 35 },
-          { name: "餛飩湯", price: 45 },
-          { name: "蛤仔湯", price: 45 }
-        ]
-      },
-      {
-        category: "湯麵",
-        addonType: "noodle_dynamic",
-        items: [
-          { name: "什錦海鮮湯麵", price: 110, customAddon: "noodle" },
-          { name: "什錦海鮮烏龍麵", price: 130, customAddon: "udon" }
-        ]
-      },
-      {
-        category: "日式照燒飯",
-        addonType: "rice",
-        items: [
-          { name: "日式照燒豬", price: 110 },
-          { name: "日式照燒牛", price: 130 },
-          { name: "泡菜豬肉", price: 120 },
-          { name: "泡菜牛肉", price: 140 }
-        ]
-      },
-      {
-        category: "小菜盤",
-        addonType: "none",
-        items: [
-          { name: "45元小菜-黃金泡菜", price: 45 }
-        ]
-      }
+    // 貳參小館菜單資料（可依實際品項與價格自行調整）
+    const MENU_ITEMS = [
+      { id: "m1", category: "主食類", name: "招牌滷肉飯", price: 45, desc: "肥瘦適中慢火滷製，鹹香下飯" },
+      { id: "m2", category: "主食類", name: "雞肉飯", price: 50, desc: "手撕鮮嫩雞肉搭配油蔥酥與醬汁" },
+      { id: "m3", category: "湯品類", name: "貢丸湯", price: 35, desc: "Q彈貢丸搭配清甜高湯與芹菜珠" },
+      { id: "m4", category: "小菜類", name: "燙青菜", price: 40, desc: "當日新鮮時蔬川燙淋特製醬汁" },
+      { id: "m5", category: "小菜類", name: "滷蛋＋油豆腐", price: 30, desc: "入味滷蛋一顆搭配吸汁油豆腐" }
     ];
 
-    let currentTable = "";
-    let isLockedByQr = false;
-    let cart = [];
-    let orders = [];
-    let orderCounter = 1;
-    let selectedItem = null;
-    let selectedAddon = { label: "正常份量", price: 0 };
-    let selectedNotes = [];
-    let webhookUrl = localStorage.getItem("ersan_n8n_webhook") || DEFAULT_WEBHOOK_URL;
+    const state = {
+      mode: null, // 'dinein' | 'takeout'
+      tableNumber: null, // 1 ~ 10
+      draftMode: null,
+      draftTable: null,
+      cart: {} // { [itemId]: quantity }
+    };
 
-    window.addEventListener("DOMContentLoaded", () => {
-      renderTableButtons();
-      renderMenu();
-
+    function initFromUrlParams() {
       const params = new URLSearchParams(window.location.search);
-      const tableParam = params.get("table");
+      const tableParam = (params.get("table") || "").trim().toLowerCase();
 
-      if (tableParam && (tableParam === "takeout" || (Number(tableParam) >= 1 && Number(tableParam) <= 10))) {
-        // 掃專屬桌牌 / 外帶 QR Code：直接帶入並鎖定，不跳選擇視窗
-        currentTable = tableParam;
-        isLockedByQr = true;
-        updateTableDisplay();
-      } else {
-        // 掃一般主網址：強制先跳出「內用 / 外帶」選擇視窗
-        isLockedByQr = false;
-        document.getElementById("btn-reselect-mode").classList.remove("hidden");
-        openModeModal();
+      if (tableParam === "takeout") {
+        state.mode = "takeout";
+        state.tableNumber = null;
+        updateModeUI();
+        closeModeModal();
+        return;
       }
 
-      document.getElementById("webhook-url-input").value = webhookUrl;
-      document.getElementById("webhook-status").textContent = webhookUrl
-        ? "目前狀態：已設定 n8n Webhook（送出訂單將同步發送 POST 請求）"
-        : "目前狀態：本地展示模式（送出訂單後可於櫃檯看板檢視）";
-    });
-
-    function renderTableButtons() {
-      const container = document.getElementById("table-buttons-container");
-      container.innerHTML = "";
-      for (let i = 1; i <= 10; i++) {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "bg-slate-800 hover:bg-amber-500 hover:text-slate-950 border border-slate-700 hover:border-amber-500 text-white font-bold py-2.5 rounded-xl text-sm transition";
-        btn.textContent = `${i} 桌`;
-        btn.onclick = () => selectMode(String(i));
-        container.appendChild(btn);
+      const num = Number(tableParam);
+      if (Number.isInteger(num) && num >= 1 && num <= 10) {
+        state.mode = "dinein";
+        state.tableNumber = num;
+        updateModeUI();
+        closeModeModal();
+        return;
       }
+
+      // 未帶入有效參數時保持強制選擇視窗開啟
+      openModeModal();
     }
 
     function openModeModal() {
-      document.getElementById("dinein-table-grid").classList.add("hidden");
-      document.getElementById("btn-choose-dinein").classList.remove("border-amber-500", "bg-amber-500/20");
+      state.draftMode = state.mode;
+      state.draftTable = state.tableNumber;
+      renderDraftModeUI();
       document.getElementById("mode-modal").classList.remove("hidden");
     }
 
-    function expandDineInTables() {
-      document.getElementById("dinein-table-grid").classList.remove("hidden");
-      document.getElementById("btn-choose-dinein").classList.add("border-amber-500", "bg-amber-500/20");
-    }
-
-    function selectMode(val) {
-      currentTable = val;
-      updateTableDisplay();
+    function closeModeModal() {
       document.getElementById("mode-modal").classList.add("hidden");
     }
 
-    function getTableDisplayText() {
-      if (!currentTable) return "尚未選擇用餐方式";
-      return currentTable === "takeout" ? "外帶" : `內用｜第 ${currentTable} 桌`;
+    function chooseMode(mode) {
+      state.draftMode = mode;
+      if (mode === "takeout") {
+        state.draftTable = null;
+      }
+      renderDraftModeUI();
     }
 
-    function getOrderTableLabel() {
-      return currentTable === "takeout" ? "外帶" : `第 ${currentTable} 桌`;
+    function selectDraftTable(num) {
+      state.draftMode = "dinein";
+      state.draftTable = num;
+      renderDraftModeUI();
     }
 
-    function updateTableDisplay() {
-      const text = getTableDisplayText();
-      document.getElementById("table-display").textContent = text;
-      document.getElementById("cart-modal-table-label").textContent = text;
+    function renderDraftModeUI() {
+      const dineinBtn = document.getElementById("btn-select-dinein");
+      const takeoutBtn = document.getElementById("btn-select-takeout");
+      const pickerBox = document.getElementById("table-picker-box");
+      const grid = document.getElementById("table-buttons-grid");
+      const confirmBtn = document.getElementById("confirm-mode-btn");
+
+      dineinBtn.className = `p-4 rounded-2xl border-2 text-left transition cursor-pointer ${
+        state.draftMode === "dinein"
+          ? "border-amber-500 bg-amber-50"
+          : "border-slate-200 hover:border-amber-400 bg-slate-50"
+      }`;
+
+      takeoutBtn.className = `p-4 rounded-2xl border-2 text-left transition cursor-pointer ${ state.draftMode === "takeout" ? "border-amber-500 bg-amber-50" : "border-slate-200 hover:border-amber-400 bg-slate-50" }`;  if (state.draftMode === "dinein") { pickerBox.classList.remove("hidden"); grid.innerHTML = ""; for (let i = 1; i <= 10; i++) { const active = state.draftTable === i; const btn = document.createElement("button"); btn.type = "button"; btn.textContent = `${i} 桌`;
+          btn.onclick = () => selectDraftTable(i);
+          btn.className = `py-2 rounded-xl text-xs font-extrabold border transition cursor-pointer ${ active ? "bg-slate-900 text-amber-400 border-slate-900" : "bg-white text-slate-700 border-slate-300 hover:border-amber-500" }`; grid.appendChild(btn); } } else { pickerBox.classList.add("hidden"); }  const isValid = state.draftMode === "takeout" \vert{}\vert{} (state.draftMode === "dinein" && Number.isInteger(state.draftTable) && state.draftTable >= 1 && state.draftTable <= 10);  confirmBtn.disabled = !isValid; confirmBtn.className = isValid ? "mt-6 w-full py-3.5 rounded-2xl font-extrabold text-sm bg-amber-500 hover:bg-amber-400 text-slate-950 transition cursor-pointer" : "mt-6 w-full py-3.5 rounded-2xl font-extrabold text-sm bg-slate-200 text-slate-400 transition disabled:cursor-not-allowed cursor-pointer"; }  function confirmModeSelection() { if (!state.draftMode) return; state.mode = state.draftMode; state.tableNumber = state.draftMode === "dinein" ? state.draftTable : null; updateModeUI(); closeModeModal(); }  function getDiningLabel() { if (state.mode === "takeout") return "外帶"; if (state.mode === "dinein" && state.tableNumber) return `第 ${state.tableNumber} 桌`;
+      return "尚未選擇";
+    }
+
+    function updateModeUI() {
+      document.getElementById("current-mode-badge").textContent = getDiningLabel();
     }
 
     function renderMenu() {
-      const tabsEl = document.getElementById("category-tabs");
-      const menuEl = document.getElementById("menu-container");
-      tabsEl.innerHTML = "";
-      menuEl.innerHTML = "";
+      const container = document.getElementById("menu-container");
+      container.innerHTML = "";
 
-      MENU_DATA.forEach((cat, idx) => {
-        const tabBtn = document.createElement("button");
-        tabBtn.className = "whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-medium bg-slate-900 border border-slate-800 text-slate-300 hover:border-amber-500 hover:text-amber-400 transition";
-        tabBtn.textContent = cat.category;
-        tabBtn.onclick = () => {
-          document.getElementById(`cat-${idx}`).scrollIntoView({ behavior: "smooth", block: "start" });
-        };
-        tabsEl.appendChild(tabBtn);
-
-        const section = document.createElement("section");
-        section.id = `cat-${idx}`;
-        section.className = "scroll-mt-28";
-        section.innerHTML = `<h2 class="text-base font-bold text-amber-400 mb-3 border-l-4 border-amber-500 pl-2.5">${cat.category}</h2>`;
-
-        const grid = document.createElement("div");
-        grid.className = "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3";
-
-        cat.items.forEach(item => {
-          const effectiveAddon = item.customAddon || cat.addonType;
-          let badgeHtml = "";
-          if (effectiveAddon === "rice") badgeHtml = `<span class="text-[10px] bg-emerald-500/15 text-emerald-400 px-1.5 py-0.5 rounded">可免費加大</span>`;
-          if (effectiveAddon === "noodle") badgeHtml = `<span class="text-[10px] bg-sky-500/15 text-sky-400 px-1.5 py-0.5 rounded">加麵 +$10</span>`;
-          if (effectiveAddon === "udon") badgeHtml = `<span class="text-[10px] bg-purple-500/15 text-purple-400 px-1.5 py-0.5 rounded">加烏龍 +$25</span>`;
-
-          const card = document.createElement("div");
-          card.className = "bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-xl p-3.5 flex items-center justify-between gap-2 transition";
-          card.innerHTML = `
-            <div>
-              <div class="font-semibold text-sm text-white flex items-center gap-1.5 flex-wrap">
-                <span>${item.name}</span>
-                ${badgeHtml}
-              </div>
-              <div class="text-amber-400 font-bold text-sm mt-1">NT$ ${item.price}</div>
-            </div>
-            <button onclick='openOptionModal(${JSON.stringify(item)}, "${effectiveAddon}")' class="bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-amber-400 border border-slate-700 hover:border-amber-500 w-8 h-8 rounded-lg font-bold flex items-center justify-center transition">
-              +
-            </button>
-          `;
-          grid.appendChild(card);
-        });
-
-        section.appendChild(grid);
-        menuEl.appendChild(section);
-      });
-    }
-
-    function openOptionModal(item, addonType) {
-      if (!currentTable) {
-        openModeModal();
-        return;
-      }
-      selectedItem = item;
-      selectedNotes = [];
-      document.querySelectorAll(".note-btn").forEach(b => {
-        b.classList.remove("border-amber-500", "bg-amber-500/20", "text-amber-300");
-        b.classList.add("border-slate-700", "bg-slate-800", "text-slate-300");
-      });
-
-      document.getElementById("modal-item-name").textContent = item.name;
-      document.getElementById("modal-item-price").textContent = `NT$ ${item.price}`;
-
-      const addonSec = document.getElementById("modal-addon-section");
-      const addonOpts = document.getElementById("modal-addon-options");
-      addonOpts.innerHTML = "";
-
-      let choices = [{ label: "正常份量", price: 0 }];
-      if (addonType === "rice") choices.push({ label: "飯類加大 (+$0)", price: 0 });
-      if (addonType === "noodle") choices.push({ label: "炒麵/湯麵加麵 (+$10)", price: 10 });
-      if (addonType === "udon") choices.push({ label: "烏龍麵加麵 (+$25)", price: 25 });
-
-      if (choices.length > 1) {
-        addonSec.classList.remove("hidden");
-        selectedAddon = choices[0];
-        choices.forEach((c, i) => {
-          const btn = document.createElement("button");
-          btn.type = "button";
-          btn.className = `addon-btn text-xs py-2 px-3 rounded-lg border text-left transition ${i === 0 ? "border-amber-500 bg-amber-500/20 text-amber-300 font-bold" : "border-slate-700 bg-slate-800 text-slate-300"}`;
-          btn.textContent = c.label;
-          btn.onclick = () => {
-            selectedAddon = c;
-            document.querySelectorAll(".addon-btn").forEach(el => {
-              el.className = "addon-btn text-xs py-2 px-3 rounded-lg border text-left transition border-slate-700 bg-slate-800 text-slate-300";
-            });
-            btn.className = "addon-btn text-xs py-2 px-3 rounded-lg border text-left transition border-amber-500 bg-amber-500/20 text-amber-300 font-bold";
-          };
-          addonOpts.appendChild(btn);
-        });
-      } else {
-        addonSec.classList.add("hidden");
-        selectedAddon = { label: "正常份量", price: 0 };
-      }
-
-      document.getElementById("option-modal").classList.remove("hidden");
-    }
-
-    function closeOptionModal() {
-      document.getElementById("option-modal").classList.add("hidden");
-    }
-
-    function toggleNote(btn, note) {
-      if (selectedNotes.includes(note)) {
-        selectedNotes = selectedNotes.filter(n => n !== note);
-        btn.classList.remove("border-amber-500", "bg-amber-500/20", "text-amber-300");
-        btn.classList.add("border-slate-700", "bg-slate-800", "text-slate-300");
-      } else {
-        selectedNotes.push(note);
-        btn.classList.add("border-amber-500", "bg-amber-500/20", "text-amber-300");
-        btn.classList.remove("border-slate-700", "bg-slate-800", "text-slate-300");
-      }
-    }
-
-    function confirmAddToCart() {
-      const unitPrice = selectedItem.price + selectedAddon.price;
-      const specText = [
-        selectedAddon.label !== "正常份量" ? selectedAddon.label : "",
-        ...selectedNotes
-      ].filter(Boolean).join("、");
-
-      cart.push({
-        id: Date.now(),
-        name: selectedItem.name,
-        spec: specText || "標準",
-        unitPrice,
-        qty: 1
-      });
-      updateCartUI();
-      closeOptionModal();
-    }
-
-    function updateCartUI() {
-      const totalQty = cart.reduce((sum, i) => sum + i.qty, 0);
-      const totalPrice = cart.reduce((sum, i) => sum + i.unitPrice * i.qty, 0);
-      document.getElementById("cart-count").textContent = totalQty;
-      document.getElementById("cart-total").textContent = totalPrice;
-      document.getElementById("modal-cart-total").textContent = totalPrice;
-      document.getElementById("btn-review-order").disabled = totalQty === 0;
-    }
-
-    function openCartModal() {
-      if (cart.length === 0) return;
-      document.getElementById("cart-modal-table-label").textContent = getTableDisplayText();
-      const listEl = document.getElementById("cart-items-list");
-      listEl.innerHTML = "";
-      cart.forEach((item, index) => {
-        const row = document.createElement("div");
-        row.className = "flex items-center justify-between bg-slate-950 border border-slate-800 p-3 rounded-xl";
-        row.innerHTML = `
-          <div>
-            <div class="text-sm font-bold text-white">${item.name}</div>
-            <div class="text-xs text-slate-400">${item.spec}｜單價 $${item.unitPrice}</div>
+      MENU_ITEMS.forEach((item) => {
+        const qty = state.cart[item.id] || 0;
+        const card = document.createElement("div");
+        card.className = "bg-white rounded-2xl p-4 shadow-xs border border-slate-200 flex items-center justify-between gap-3";
+        card.innerHTML = `
+          <div class="min-w-0">
+            <div class="text-[11px] font-bold text-amber-600">${item.category}</div>
+            <div class="text-base font-extrabold text-slate-900 truncate">${item.name}</div>
+            <p class="text-xs text-slate-500 mt-0.5 line-clamp-2">${item.desc}</p> <div class="text-sm font-black text-slate-900 mt-1.5">$${item.price}</div>
           </div>
-          <div class="flex items-center gap-2">
-            <button onclick="updateItemQty(${index}, -1)" class="w-7 h-7 rounded-lg bg-slate-800 text-slate-300 font-bold">-</button>
-            <span class="text-sm font-bold w-5 text-center">${item.qty}</span>
-            <button onclick="updateItemQty(${index}, 1)" class="w-7 h-7 rounded-lg bg-slate-800 text-amber-400 font-bold">+</button>
+
+          <div class="flex items-center gap-2 shrink-0">
+            ${
+              qty > 0
+                ? `
+                  <button type="button" onclick="changeQty('${item.id}', -1)" class="w-8 h-8 rounded-full border border-slate-300 font-bold text-slate-700 hover:bg-slate-100 cursor-pointer">-</button>
+                  <span class="w-5 text-center font-black text-sm">${qty}</span>
+                `
+                : ""
+            }
+            <button type="button" onclick="changeQty('${item.id}', 1)" class="w-8 h-8 rounded-full bg-slate-900 text-amber-400 font-black hover:bg-slate-800 cursor-pointer">+</button>
           </div>
         `;
-        listEl.appendChild(row);
+        container.appendChild(card);
       });
-      document.getElementById("cart-modal").classList.remove("hidden");
+
+      updateCartSummary();
     }
 
-    function closeCartModal() {
-      document.getElementById("cart-modal").classList.add("hidden");
+    function changeQty(itemId, delta) {
+      const nextQty = (state.cart[itemId] || 0) + delta;
+      if (nextQty <= 0) {
+        delete state.cart[itemId];
+      } else {
+        state.cart[itemId] = nextQty;
+      }
+      renderMenu();
     }
 
-    function updateItemQty(index, delta) {
-      cart[index].qty += delta;
-      if (cart[index].qty <= 0) cart.splice(index, 1);
-      updateCartUI();
-      if (cart.length === 0) closeCartModal();
-      else openCartModal();
+    function updateCartSummary() {
+      let totalCount = 0;
+      let totalAmount = 0;
+
+      MENU_ITEMS.forEach((item) => {
+        const qty = state.cart[item.id] || 0;
+        totalCount += qty;
+        totalAmount += qty * item.price;
+      });
+
+      document.getElementById("cart-count").textContent = totalCount;
+      document.getElementById("cart-total").textContent = totalAmount;
+
+      const submitBtn = document.getElementById("submit-order-btn");
+      submitBtn.disabled = totalCount === 0;
     }
 
     async function submitOrder() {
-      if (!currentTable) {
-        closeCartModal();
+      if (!state.mode || (state.mode === "dinein" && !state.tableNumber)) {
         openModeModal();
         return;
       }
 
-      const orderId = `#${String(orderCounter++).padStart(3, "0")}`;
-      const totalAmount = cart.reduce((sum, i) => sum + i.unitPrice * i.qty, 0);
-      const tableLabel = getOrderTableLabel();
+      const items = MENU_ITEMS
+        .filter((item) => (state.cart[item.id] || 0) > 0)
+        .map((item) => ({
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          qty: state.cart[item.id],
+          subtotal: item.price * state.cart[item.id]
+        }));
+
+      if (items.length === 0) return;
+
+      const totalAmount = items.reduce((sum, i) => sum + i.subtotal, 0);
+      const note = document.getElementById("order-note").value.trim();
+      const diningLabel = getDiningLabel();
+      const orderTime = new Date().toLocaleTimeString("zh-TW", { hour12: false });
 
       const payload = {
         store: "貳參小館",
-        order_id: orderId,
-        table: tableLabel,
-        items: cart.map(i => ({ name: i.name, spec: i.spec, qty: i.qty, subtotal: i.unitPrice * i.qty })),
-        total_amount: totalAmount,
-        payment_status: "PENDING_CASH",
-        created_at: new Date().toLocaleTimeString("zh-TW", { hour12: false })
+        diningMode: state.mode === "takeout" ? "外帶" : "內用",
+        diningLabel,
+        tableNumber: state.tableNumber,
+        items,
+        totalAmount,
+        note,
+        orderTime
       };
 
-      if (webhookUrl) {
-        try {
-          fetch(webhookUrl, {
+      const submitBtn = document.getElementById("submit-order-btn");
+      submitBtn.disabled = true;
+      submitBtn.textContent = "送出中...";
+
+      try {
+        if (N8N_WEBHOOK_URL && !N8N_WEBHOOK_URL.includes("你的-n8n-網域")) {
+          await fetch(N8N_WEBHOOK_URL, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
           });
-        } catch (e) {
-          console.error("Webhook 發送失敗", e);
         }
+      } catch (err) {
+        console.error("Webhook 送出失敗：", err);
+      } finally {
+        submitBtn.textContent = "送出訂單";
+        updateCartSummary();
       }
 
-      orders.unshift(payload);
-      cart = [];
-      updateCartUI();
-      closeCartModal();
-      renderCounterBoard();
-
-      document.getElementById("receipt-order-id").textContent = orderId;
-      document.getElementById("receipt-table").textContent = tableLabel;
-      document.getElementById("receipt-amount").textContent = `NT$ ${totalAmount}`;
-      document.getElementById("receipt-modal").classList.remove("hidden");
+      showReceiptModal(payload);
     }
 
-    function closeReceiptModal() {
-      document.getElementById("receipt-modal").classList.add("hidden");
-    }
-
-    function switchView(view) {
-      const custView = document.getElementById("view-customer");
-      const countView = document.getElementById("view-counter");
-      const btnCust = document.getElementById("btn-view-customer");
-      const btnCount = document.getElementById("btn-view-counter");
-
-      if (view === "customer") {
-        custView.classList.remove("hidden");
-        countView.classList.add("hidden");
-        btnCust.className = "px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium bg-amber-500 text-slate-950 transition";
-        btnCount.className = "px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium text-slate-300 hover:text-white transition relative";
-      } else {
-        custView.classList.add("hidden");
-        countView.classList.remove("hidden");
-        btnCount.className = "px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium bg-amber-500 text-slate-950 transition relative";
-        btnCust.className = "px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium text-slate-300 hover:text-white transition";
-        renderCounterBoard();
-      }
-    }
-
-    function renderCounterBoard() {
-      const pendingEl = document.getElementById("orders-pending");
-      const paidEl = document.getElementById("orders-paid");
-      const badgeEl = document.getElementById("pending-badge");
-
-      const pendingOrders = orders.filter(o => o.payment_status === "PENDING_CASH");
-      const paidOrders = orders.filter(o => o.payment_status === "PAID_PREPARING");
-
-      if (pendingOrders.length > 0) {
-        badgeEl.textContent = pendingOrders.length;
-        badgeEl.classList.remove("hidden");
-      } else {
-        badgeEl.classList.add("hidden");
-      }
-
-      pendingEl.innerHTML = pendingOrders.length === 0
-        ? `<div class="text-xs text-slate-500 bg-slate-900/50 border border-slate-800/80 rounded-xl p-6 text-center">目前沒有待付款訂單</div>`
-        : pendingOrders.map(o => `
-          <div class="bg-slate-900 border border-rose-500/40 rounded-xl p-4 space-y-3">
-            <div class="flex justify-between items-center">
-              <div class="flex items-center gap-2">
-                <span class="font-extrabold text-base text-white">${o.order_id}</span>
-                <span class="bg-amber-500/20 text-amber-300 text-xs font-bold px-2 py-0.5 rounded">${o.table}</span>
-              </div>
-              <span class="text-xs text-slate-400">${o.created_at}</span>
-            </div>
-            <div class="space-y-1 border-y border-slate-800 py-2 text-xs">
-              ${o.items.map(i => `<div class="flex justify-between"><span>${i.name} <span class="text-slate-400">(${i.spec})</span> x${i.qty}</span><span>$${i.subtotal}</span></div>`).join("")}
-            </div>
-            <div class="flex justify-between items-center">
-              <div class="text-sm font-bold text-rose-400">應收現金：NT$ ${o.total_amount}</div>
-              <button onclick="confirmPayment('${o.order_id}')" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-3.5 py-1.5 rounded-lg text-xs transition">
-                ✓ 確認收款並通知 POS 出單
-              </button>
-            </div>
-          </div>
-        `).join("");
-
-      paidEl.innerHTML = paidOrders.length === 0
-        ? `<div class="text-xs text-slate-500 bg-slate-900/50 border border-slate-800/80 rounded-xl p-6 text-center">尚無已核銷訂單</div>`
-        : paidOrders.map(o => `
-          <div class="bg-slate-900/70 border border-emerald-500/30 rounded-xl p-4 space-y-2 opacity-90">
-            <div class="flex justify-between items-center">
-              <div class="flex items-center gap-2">
-                <span class="font-bold text-sm text-white">${o.order_id}</span>
-                <span class="bg-slate-800 text-slate-300 text-xs px-2 py-0.5 rounded">${o.table}</span>
-              </div>
-              <span class="text-[11px] text-emerald-400 font-semibold">已收款 $${o.total_amount}</span>
-            </div>
-            <div class="text-xs text-slate-400">
-              ${o.items.map(i => `${i.name}x${i.qty}`).join("、")}
-            </div>
-          </div>
-        `).join("");
-    }
-
-    function confirmPayment(orderId) {
-      const target = orders.find(o => o.order_id === orderId);
-      if (target) {
-        target.payment_status = "PAID_PREPARING";
-        renderCounterBoard();
-      }
-    }
-
-    function toggleN8nConfig() {
-      document.getElementById("n8n-config-panel").classList.toggle("hidden");
-    }
-
-    function saveWebhookUrl() {
-      webhookUrl = document.getElementById("webhook-url-input").value.trim();
-      localStorage.setItem("ersan_n8n_webhook", webhookUrl);
-      document.getElementById("webhook-status").textContent = webhookUrl
-        ? "目前狀態：已設定 n8n Webhook（送出訂單將同步發送 POST 請求）"
-        : "目前狀態：本地展示模式（送出訂單後可於櫃檯看板檢視）";
-    }
-  </script>
-</body>
-</html>
+    function showReceiptModal(order) {
+      const detail = document.getElementById("receipt-detail");
+      const itemsHtml = order.items
+        .map((i) => `<div class="flex justify-between"><span>${i.name} ×${i.qty}</span><span class="font-bold
