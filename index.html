@@ -42,23 +42,14 @@
     
     <!-- 桌號與用餐方式狀態列 -->
     <div class="bg-slate-900 border border-slate-800 rounded-xl p-3.5 mb-4 flex flex-wrap items-center justify-between gap-3">
-      <div class="flex items-center gap-3">
-        <div class="bg-amber-500/10 border border-amber-500/30 text-amber-400 px-3 py-1.5 rounded-lg text-sm font-bold" id="table-display">
-          內用｜第 1 桌
+      <div class="flex items-center gap-2.5">
+        <div class="bg-amber-500/15 border border-amber-500/40 text-amber-400 px-3.5 py-1.5 rounded-lg text-sm font-extrabold tracking-wide" id="table-display">
+          尚未選擇用餐方式
         </div>
-        <select id="table-selector" onchange="changeTable(this.value)" class="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-amber-500">
-          <option value="1">模擬掃碼：第 1 桌</option>
-          <option value="2">模擬掃碼：第 2 桌</option>
-          <option value="3">模擬掃碼：第 3 桌</option>
-          <option value="4">模擬掃碼：第 4 桌</option>
-          <option value="5">模擬掃碼：第 5 桌</option>
-          <option value="6">模擬掃碼：第 6 桌</option>
-          <option value="7">模擬掃碼：第 7 桌</option>
-          <option value="8">模擬掃碼：第 8 桌</option>
-          <option value="9">模擬掃碼：第 9 桌</option>
-          <option value="10">模擬掃碼：第 10 桌</option>
-          <option value="takeout">模擬掃碼：外帶自取</option>
-        </select>
+        <!-- 僅在未掃專屬桌牌 QR Code 時顯示「重新選擇」按鈕，掃專屬桌碼時自動隱藏防誤觸 -->
+        <button id="btn-reselect-mode" onclick="openModeModal()" class="hidden bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs px-3 py-1.5 rounded-lg transition">
+          切換內用／外帶
+        </button>
       </div>
       <div class="text-xs text-slate-400">
         ★ 內用白飯、飲料免費供應｜飯類可免費加大
@@ -103,7 +94,7 @@
       <div class="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h2 class="text-sm font-bold text-amber-400">⚙️ 現場無 POS API 解決方案（先付款、後出單）</h2>
-          <p class="text-xs text-slate-400 mt-1">客人送出訂單後寫入 Google Sheets 並通知櫃檯 → 客人至櫃檯付現 → 店員點擊「確認收款」並同步於小當家 POS 按單讓 T300 出單。</p>
+          <p class="text-xs text-slate-400 mt-1">客人送出訂單後通知櫃檯 Telegram → 客人至櫃檯付現 → 店員點擊「確認收款」並同步於小當家 POS 按單讓 T300 出單。</p>
         </div>
         <button onclick="toggleN8nConfig()" class="text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3 py-1.5 rounded-lg text-slate-200">
           🔗 設定 n8n Webhook
@@ -113,12 +104,12 @@
       <!-- n8n Webhook 設定面板 -->
       <div id="n8n-config-panel" class="hidden mt-4 pt-4 border-t border-slate-800 space-y-3">
         <div>
-          <label class="block text-xs text-slate-300 mb-1">n8n Production Webhook URL（選填，留空則僅在本地模擬演示）</label>
+          <label class="block text-xs text-slate-300 mb-1">n8n Production Webhook URL（已內建預設正式網址，若有異動可於此修改）</label>
           <div class="flex gap-2">
-            <input type="url" id="webhook-url-input" placeholder="https://your-n8n.zeabur.app/webhook/order" class="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500" />
+            <input type="url" id="webhook-url-input" placeholder="https://primary-production-5317642b.up.railway.app/webhook/ersan-order" class="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500" />
             <button onclick="saveWebhookUrl()" class="bg-amber-500 text-slate-950 font-bold px-4 py-1.5 rounded-lg text-xs">儲存設定</button>
           </div>
-          <p id="webhook-status" class="text-[11px] text-slate-400 mt-1">目前狀態：本地展示模式（送出訂單後可於櫃檯看板檢視）</p>
+          <p id="webhook-status" class="text-[11px] text-slate-400 mt-1">目前狀態：已設定 n8n Webhook（送出訂單將同步發送 POST 請求）</p>
         </div>
       </div>
     </div>
@@ -148,6 +139,40 @@
       </div>
     </div>
   </main>
+
+  <!-- ==================== 彈窗：強制選擇用餐方式（無網址桌號參數時觸發） ==================== -->
+  <div id="mode-modal" class="hidden fixed inset-0 bg-slate-950/95 backdrop-blur-md z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md p-6 space-y-5 shadow-2xl">
+      <div class="text-center space-y-1.5">
+        <span class="inline-block bg-amber-500 text-slate-950 font-bold text-xs px-2.5 py-0.5 rounded">歡迎光臨 貳參小館</span>
+        <h2 class="text-xl font-extrabold text-white">請選擇用餐方式</h2>
+        <p class="text-xs text-slate-400">選好後即可開始點餐，送單後請至櫃檯現金結帳</p>
+      </div>
+
+      <!-- 內用 / 外帶 兩大按鈕 -->
+      <div class="grid grid-cols-2 gap-3">
+        <button type="button" id="btn-choose-dinein" onclick="expandDineInTables()" class="bg-slate-800 hover:bg-amber-500/20 border-2 border-slate-700 hover:border-amber-500 rounded-2xl p-5 text-center transition group">
+          <div class="text-3xl mb-2">🏠</div>
+          <div class="text-base font-extrabold text-white group-hover:text-amber-400">內用</div>
+          <div class="text-[11px] text-slate-400 mt-1">請點選您的桌號</div>
+        </button>
+
+        <button type="button" onclick="selectMode('takeout')" class="bg-slate-800 hover:bg-amber-500/20 border-2 border-slate-700 hover:border-amber-500 rounded-2xl p-5 text-center transition group">
+          <div class="text-3xl mb-2">🛍️</div>
+          <div class="text-base font-extrabold text-white group-hover:text-amber-400">外帶</div>
+          <div class="text-[11px] text-slate-400 mt-1">直接進入外帶點餐</div>
+        </button>
+      </div>
+
+      <!-- 點選「內用」後展開的 1~10 桌按鈕網格 -->
+      <div id="dinein-table-grid" class="hidden pt-3 border-t border-slate-800 space-y-2.5">
+        <div class="text-xs font-bold text-amber-400 text-center">請點選您入座的桌號：</div>
+        <div class="grid grid-cols-5 gap-2" id="table-buttons-container">
+          <!-- JS 動態生成 1~10 桌按鈕 -->
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- ==================== 彈窗：客製化加料選項 ==================== -->
   <div id="option-modal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4">
@@ -185,7 +210,10 @@
   <div id="cart-modal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4">
     <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md p-5 max-h-[85vh] flex flex-col">
       <div class="flex justify-between items-center pb-3 border-b border-slate-800">
-        <h3 class="text-lg font-bold text-white">確認點餐明細</h3>
+        <div>
+          <h3 class="text-lg font-bold text-white">確認點餐明細</h3>
+          <p class="text-xs text-amber-400 font-semibold mt-0.5" id="cart-modal-table-label">內用｜第 1 桌</p>
+        </div>
         <button onclick="closeCartModal()" class="text-slate-400 hover:text-white text-xl leading-none">&times;</button>
       </div>
 
@@ -233,6 +261,8 @@
   </div>
 
   <script>
+    const DEFAULT_WEBHOOK_URL = "https://primary-production-5317642b.up.railway.app/webhook/ersan-order";
+
     // 貳參小館完整 15 大分類菜單資料
     const MENU_DATA = [
       {
@@ -391,38 +421,84 @@
       }
     ];
 
-    let currentTable = "1";
+    let currentTable = "";
+    let isLockedByQr = false;
     let cart = [];
     let orders = [];
     let orderCounter = 1;
     let selectedItem = null;
     let selectedAddon = { label: "正常份量", price: 0 };
     let selectedNotes = [];
-    let webhookUrl = localStorage.getItem("ersan_n8n_webhook") || "";
+    let webhookUrl = localStorage.getItem("ersan_n8n_webhook") || DEFAULT_WEBHOOK_URL;
 
     window.addEventListener("DOMContentLoaded", () => {
+      renderTableButtons();
+      renderMenu();
+
       const params = new URLSearchParams(window.location.search);
       const tableParam = params.get("table");
+
       if (tableParam && (tableParam === "takeout" || (Number(tableParam) >= 1 && Number(tableParam) <= 10))) {
+        // 掃專屬桌牌 / 外帶 QR Code：直接帶入並鎖定，不跳選擇視窗
         currentTable = tableParam;
-        document.getElementById("table-selector").value = tableParam;
+        isLockedByQr = true;
+        updateTableDisplay();
+      } else {
+        // 掃一般主網址：強制先跳出「內用 / 外帶」選擇視窗
+        isLockedByQr = false;
+        document.getElementById("btn-reselect-mode").classList.remove("hidden");
+        openModeModal();
       }
-      updateTableDisplay();
-      renderMenu();
-      if (webhookUrl) {
-        document.getElementById("webhook-url-input").value = webhookUrl;
-        document.getElementById("webhook-status").textContent = "目前狀態：已設定 n8n Webhook（送出訂單將同步發送 POST 請求）";
-      }
+
+      document.getElementById("webhook-url-input").value = webhookUrl;
+      document.getElementById("webhook-status").textContent = webhookUrl
+        ? "目前狀態：已設定 n8n Webhook（送出訂單將同步發送 POST 請求）"
+        : "目前狀態：本地展示模式（送出訂單後可於櫃檯看板檢視）";
     });
 
-    function changeTable(val) {
+    function renderTableButtons() {
+      const container = document.getElementById("table-buttons-container");
+      container.innerHTML = "";
+      for (let i = 1; i <= 10; i++) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "bg-slate-800 hover:bg-amber-500 hover:text-slate-950 border border-slate-700 hover:border-amber-500 text-white font-bold py-2.5 rounded-xl text-sm transition";
+        btn.textContent = `${i} 桌`;
+        btn.onclick = () => selectMode(String(i));
+        container.appendChild(btn);
+      }
+    }
+
+    function openModeModal() {
+      document.getElementById("dinein-table-grid").classList.add("hidden");
+      document.getElementById("btn-choose-dinein").classList.remove("border-amber-500", "bg-amber-500/20");
+      document.getElementById("mode-modal").classList.remove("hidden");
+    }
+
+    function expandDineInTables() {
+      document.getElementById("dinein-table-grid").classList.remove("hidden");
+      document.getElementById("btn-choose-dinein").classList.add("border-amber-500", "bg-amber-500/20");
+    }
+
+    function selectMode(val) {
       currentTable = val;
       updateTableDisplay();
+      document.getElementById("mode-modal").classList.add("hidden");
+    }
+
+    function getTableDisplayText() {
+      if (!currentTable) return "尚未選擇用餐方式";
+      return currentTable === "takeout" ? "外帶" : `內用｜第 ${currentTable} 桌`;
+    }
+
+    function getOrderTableLabel() {
+      return currentTable === "takeout" ? "外帶" : `第 ${currentTable} 桌`;
     }
 
     function updateTableDisplay() {
-      const el = document.getElementById("table-display");
-      el.textContent = currentTable === "takeout" ? "外帶自取" : `內用｜第 ${currentTable} 桌`;
+      const text = getTableDisplayText();
+      document.getElementById("table-display").textContent = text;
+      document.getElementById("cart-modal-table-label").textContent = text;
     }
 
     function renderMenu() {
@@ -478,6 +554,10 @@
     }
 
     function openOptionModal(item, addonType) {
+      if (!currentTable) {
+        openModeModal();
+        return;
+      }
       selectedItem = item;
       selectedNotes = [];
       document.querySelectorAll(".note-btn").forEach(b => {
@@ -567,6 +647,7 @@
 
     function openCartModal() {
       if (cart.length === 0) return;
+      document.getElementById("cart-modal-table-label").textContent = getTableDisplayText();
       const listEl = document.getElementById("cart-items-list");
       listEl.innerHTML = "";
       cart.forEach((item, index) => {
@@ -601,9 +682,15 @@
     }
 
     async function submitOrder() {
+      if (!currentTable) {
+        closeCartModal();
+        openModeModal();
+        return;
+      }
+
       const orderId = `#${String(orderCounter++).padStart(3, "0")}`;
       const totalAmount = cart.reduce((sum, i) => sum + i.unitPrice * i.qty, 0);
-      const tableLabel = currentTable === "takeout" ? "外帶自取" : `第 ${currentTable} 桌`;
+      const tableLabel = getOrderTableLabel();
 
       const payload = {
         store: "貳參小館",
