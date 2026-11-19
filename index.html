@@ -483,26 +483,41 @@
         status = "UNPAID";
       }
 
+      function extractNumber(val) {
+        if (typeof val === "number") return Number.isFinite(val) ? val : 0;
+        if (typeof val === "string") {
+          const cleaned = val.replace(/[^0-9.-]/g, "").trim();
+          if (!cleaned) return 0;
+          const n = Number(cleaned);
+          return Number.isFinite(n) ? n : 0;
+        }
+        return 0;
+      }
+
       function parseAmountValue(obj) {
-        const candidates = [
-          obj.totalAmount, obj.total_amount, obj.total, obj.amount, obj.price, obj.subtotal,
-          obj["應收金額"], obj["總金額"], obj["金額"], obj["應收"], obj["小計"]
+        const directKeys = [
+          "總結", "totalAmount", "total_amount", "total", "amount", "price", "subtotal",
+          "應收金額", "總金額", "金額", "應收", "小計", "合計"
         ];
-        for (const v of candidates) {
-          if (v !== undefined && v !== null && String(v).trim() !== "") {
-            const num = Number(String(v).replace(/[^0-9.-]/g, ""));
-            if (Number.isFinite(num) && num !== 0) return num;
+        for (const key of directKeys) {
+          if (obj[key] !== undefined && obj[key] !== null && String(obj[key]).trim() !== "") {
+            const num = extractNumber(obj[key]);
+            if (num !== 0) return num;
           }
         }
-        // Fallback: scan any key containing 金額 / total / amount / price / 應收 / 小計
+        // Check case-insensitive / trimmed key match on Object.entries
         for (const [k, v] of Object.entries(obj)) {
-          if (/金額|total|amount|price|應收|小計/i.test(k) && v !== undefined && v !== null && String(v).trim() !== "") {
-            const num = Number(String(v).replace(/[^0-9.-]/g, ""));
-            if (Number.isFinite(num) && num !== 0) return num;
+          const cleanKey = String(k).trim();
+          if (
+            cleanKey === "總結" ||
+            /總結|金額|total|amount|price|應收|小計|合計/i.test(cleanKey)
+          ) {
+            const num = extractNumber(v);
+            if (num !== 0) return num;
           }
         }
         // Fallback: compute from parsedItems if available
-        const itemsSum = parsedItems.reduce((acc, it) => acc + (Number(it.subtotal) || 0), 0);
+        const itemsSum = parsedItems.reduce((acc, it) => acc + extractNumber(it.subtotal), 0);
         return itemsSum;
       }
 
