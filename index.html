@@ -111,7 +111,7 @@
     </div>
   </section>
 
-  <!-- 內用／外帶選擇彈窗（僅在切到客人點餐視角且未選桌號時使用） -->
+  <!-- 內用／外帶選擇彈窗 -->
   <div id="mode-modal" class="hidden fixed inset-0 bg-slate-950/95 backdrop-blur-md z-50 flex items-center justify-center p-4">
     <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md p-6 space-y-5 shadow-2xl">
       <div class="text-center space-y-1.5">
@@ -179,7 +179,7 @@
       <div class="flex justify-between items-center pb-3 border-b border-slate-800">
         <div>
           <h3 class="text-lg font-bold text-white">確認點餐明細</h3>
-          <p class="text-xs text-amber-400 font-semibold mt-0.5" id="cart-modal-table-label">內用｜第 1 桌</p>
+          <p class="text-xs text-amber-400 font-semibold mt-0.5" id="cart-modal-table-label">外帶／櫃檯點餐</p>
         </div>
         <button type="button" onclick="closeCartModal()" class="text-slate-400 hover:text-white text-xl leading-none">&times;</button>
       </div>
@@ -208,7 +208,7 @@
       <div>
         <div class="text-xs text-slate-400">已送達櫃檯，請至櫃檯現金結帳</div>
         <h3 class="text-2xl font-extrabold text-white mt-1" id="receipt-order-id">#001</h3>
-        <div class="inline-block bg-slate-800 text-amber-400 text-xs font-bold px-3 py-1 rounded-full mt-2" id="receipt-table">第 1 桌</div>
+        <div class="inline-block bg-slate-800 text-amber-400 text-xs font-bold px-3 py-1 rounded-full mt-2" id="receipt-table">外帶</div>
       </div>
 
       <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 text-left space-y-2">
@@ -388,7 +388,7 @@
       }
     ];
 
-    let currentTable = "";
+    let currentTable = "takeout";
     let isCustomerQrMode = false;
     let cart = [];
     let selectedItem = null;
@@ -405,7 +405,6 @@
       const isValidQrTable = tableParam === "takeout" || (Number(tableParam) >= 1 && Number(tableParam) <= 10);
 
       if (isValidQrTable) {
-        // 掃碼進入：直接進客人點餐畫面，完全隱藏櫃檯端入口
         isCustomerQrMode = true;
         currentTable = tableParam;
         document.getElementById("staff-nav").classList.add("hidden");
@@ -414,11 +413,12 @@
         document.getElementById("view-customer").classList.remove("hidden");
         updateTableDisplay();
       } else {
-        // 無參數開啟（櫃檯裝置）：直接顯示櫃檯端，不用再點一次
         isCustomerQrMode = false;
+        currentTable = "takeout";
         document.getElementById("staff-nav").classList.remove("hidden");
         document.getElementById("staff-nav").classList.add("flex");
         document.getElementById("btn-reselect-mode").classList.remove("hidden");
+        updateTableDisplay();
         switchView("counter");
       }
 
@@ -448,9 +448,6 @@
         customerEl.classList.remove("hidden");
         tabCustomer.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500 text-slate-950 transition";
         tabCounter.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-700 transition";
-        if (!currentTable) {
-          openModeModal();
-        }
       }
     }
 
@@ -485,7 +482,7 @@
     }
 
     function getTableDisplayText() {
-      if (!currentTable) return "尚未選擇用餐方式";
+      if (!currentTable) return "外帶";
       return currentTable === "takeout" ? "外帶" : `內用｜第 ${currentTable} 桌`;
     }
 
@@ -559,10 +556,6 @@
     }
 
     function openOptionModal(item, addonType) {
-      if (!currentTable) {
-        openModeModal();
-        return;
-      }
       selectedItem = item;
       selectedNotes = [];
       document.querySelectorAll(".note-btn").forEach(b => {
@@ -705,12 +698,6 @@
     }
 
     function submitOrder() {
-      if (!currentTable) {
-        closeCartModal();
-        openModeModal();
-        return;
-      }
-
       const orderId = nextOrderId();
       const totalAmount = cart.reduce((sum, i) => sum + i.unitPrice * i.qty, 0);
       const tableLabel = getOrderTableLabel();
