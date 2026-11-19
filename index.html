@@ -118,7 +118,7 @@
             <input type="url" id="webhook-url-input" placeholder="https://your-n8n.zeabur.app/webhook/order" class="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500" />
             <button onclick="saveWebhookUrl()" class="bg-amber-500 text-slate-950 font-bold px-4 py-1.5 rounded-lg text-xs">儲存設定</button>
           </div>
-          <p id="webhook-status" class="text-[11px] text-slate-400 mt-1">目前狀態：本地展示模式（送出訂單仍會產生標準 JSON Payload 供檢視）</p>
+          <p id="webhook-status" class="text-[11px] text-slate-400 mt-1">目前狀態：本地展示模式（送出訂單後可於櫃檯看板檢視）</p>
         </div>
       </div>
     </div>
@@ -206,12 +206,12 @@
     </div>
   </div>
 
-  <!-- ==================== 彈窗：訂單送出成功憑證 ==================== -->
+  <!-- ==================== 彈窗：客人結帳憑證（純用餐引導） ==================== -->
   <div id="receipt-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
     <div class="bg-slate-900 border border-amber-500/50 rounded-2xl w-full max-w-md p-6 text-center space-y-4">
       <div class="w-12 h-12 bg-amber-500/20 text-amber-400 rounded-full flex items-center justify-center mx-auto text-2xl">✓</div>
       <div>
-        <div class="text-xs text-slate-400">訂單已傳送至系統，請持此畫面至櫃檯結帳</div>
+        <div class="text-xs text-slate-400">點餐完成，請至櫃檯現金結帳</div>
         <h3 class="text-2xl font-extrabold text-white mt-1" id="receipt-order-id">#001</h3>
         <div class="inline-block bg-slate-800 text-amber-400 text-xs font-bold px-3 py-1 rounded-full mt-2" id="receipt-table">第 1 桌</div>
       </div>
@@ -221,25 +221,14 @@
           <span class="text-slate-400">應付現金金額</span>
           <span class="font-bold text-amber-400 text-lg" id="receipt-amount">NT$ 0</span>
         </div>
-        <div class="text-xs text-rose-400 pt-2 border-t border-slate-800">
-          ● 目前狀態：等待櫃檯收款（尚未出單至廚房）
+        <div class="text-xs text-amber-300 pt-2 border-t border-slate-800 leading-relaxed">
+          ● 付款完成後才會開始製作餐點，歡迎入座稍候。
         </div>
       </div>
 
-      <!-- 展示用：顯示傳給 n8n 的 JSON Payload -->
-      <details class="text-left bg-slate-950 border border-slate-800 rounded-lg p-2.5">
-        <summary class="text-[11px] text-slate-400 cursor-pointer">檢視傳送給 n8n Webhook 的 JSON 資料格式</summary>
-        <pre id="receipt-json" class="text-[10px] text-emerald-400 overflow-x-auto mt-2 leading-relaxed"></pre>
-      </details>
-
-      <div class="flex gap-2 pt-2">
-        <button onclick="closeReceiptAndGoCounter()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-semibold py-2.5 rounded-xl text-xs transition">
-          切換至櫃檯視角核銷 →
-        </button>
-        <button onclick="closeReceiptModal()" class="flex-1 bg-amber-500 text-slate-950 font-bold py-2.5 rounded-xl text-xs transition">
-          繼續點餐
-        </button>
-      </div>
+      <button onclick="closeReceiptModal()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 rounded-xl text-sm transition">
+        繼續點餐
+      </button>
     </div>
   </div>
 
@@ -411,7 +400,6 @@
     let selectedNotes = [];
     let webhookUrl = localStorage.getItem("ersan_n8n_webhook") || "";
 
-    // 初始化
     window.addEventListener("DOMContentLoaded", () => {
       const params = new URLSearchParams(window.location.search);
       const tableParam = params.get("table");
@@ -627,7 +615,6 @@
         created_at: new Date().toLocaleTimeString("zh-TW", { hour12: false })
       };
 
-      // 若有設定 n8n Webhook 則實際發送 POST
       if (webhookUrl) {
         try {
           fetch(webhookUrl, {
@@ -646,21 +633,14 @@
       closeCartModal();
       renderCounterBoard();
 
-      // 顯示結帳憑證彈窗
       document.getElementById("receipt-order-id").textContent = orderId;
       document.getElementById("receipt-table").textContent = tableLabel;
       document.getElementById("receipt-amount").textContent = `NT$ ${totalAmount}`;
-      document.getElementById("receipt-json").textContent = JSON.stringify(payload, null, 2);
       document.getElementById("receipt-modal").classList.remove("hidden");
     }
 
     function closeReceiptModal() {
       document.getElementById("receipt-modal").classList.add("hidden");
-    }
-
-    function closeReceiptAndGoCounter() {
-      closeReceiptModal();
-      switchView("counter");
     }
 
     function switchView(view) {
@@ -756,7 +736,7 @@
       localStorage.setItem("ersan_n8n_webhook", webhookUrl);
       document.getElementById("webhook-status").textContent = webhookUrl
         ? "目前狀態：已設定 n8n Webhook（送出訂單將同步發送 POST 請求）"
-        : "目前狀態：本地展示模式（送出訂單仍會產生標準 JSON Payload 供檢視）";
+        : "目前狀態：本地展示模式（送出訂單後可於櫃檯看板檢視）";
     }
   </script>
 </body>
