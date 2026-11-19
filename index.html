@@ -133,7 +133,7 @@
         <p class="text-xs text-slate-400">內用掃碼與櫃檯單同步顯示於此，確認收款後即可進入製作出餐與完成</p>
       </div>
       <div class="flex items-center gap-2">
-        <button type="button" onclick="renderCounterOrders()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-bold px-3.5 py-2 rounded-xl transition">
+        <button type="button" onclick="syncCounterOrders()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-bold px-3.5 py-2 rounded-xl transition">
           🔄 重新整理訂單
         </button>
         <button type="button" onclick="clearCompletedOrders()" class="bg-slate-900 hover:bg-rose-950/60 border border-slate-800 text-slate-400 hover:text-rose-300 text-xs px-3 py-2 rounded-xl transition">
@@ -225,6 +225,7 @@
     const STORAGE_KEY_ORDERS = "ersan_counter_orders_v1";
     const STORAGE_KEY_SEQ = "ersan_counter_seq_v1";
     const N8N_WEBHOOK_URL = "https://primary-production-5317642b.up.railway.app/webhook/ersan-order";
+    const COUNTER_ORDERS_URL = "https://primary-production-5317642b.up.railway.app/webhook/ersan-orders";
 
     const MENU_DATA = [
       {
@@ -421,6 +422,8 @@
         document.getElementById("staff-order-type-bar").classList.add("flex");
         updateTableDisplay();
         switchView("counter");
+        syncCounterOrders();
+        setInterval(syncCounterOrders, 5000);
       }
 
       window.addEventListener("storage", (e) => {
@@ -429,6 +432,91 @@
         }
       });
     });
+
+    function normalizeRemoteOrder(raw) {
+      if (!raw || typeof raw !== "object") return null;
+      const row = raw.json && typeof raw.json === "object" ? raw.json : raw;
+      const id = String(row.id || row.orderId || "").trim();
+      if (!id) return null;
+
+      let parsedItems = [];
+      if (Array.isArray(row.items)) {
+        parsedItems = row.items.map(i => ({
+          name: i.name || "餐點",
+          spec: i.spec || "標準",
+          qty: Number(i.qty || 1),
+          subtotal: Number(i.subtotal || ((i.unitPrice || 0) * (i.qty || 1)))
+        }));
+      } else if (typeof row.items === "string" && row.items.trim()) {
+        try {
+          const arr = JSON.parse(row.items);
+          if (Array.isArray(arr)) {
+            parsedItems = arr.map(i => ({
+              name: i.name || "餐點",
+              spec: i.spec || "標準",
+              qty: Number(i.qty || 1),
+              subtotal: Number(i.subtotal || ((i.unitPrice || 0) * (i.qty || 1)))
+            }));
+          }
+        } catch {
+          parsedItems = [{ name: row.items.trim(), spec: "標準", qty: 1, subtotal: Number(row.totalAmount || 0) }];
+        }
+      } else if (typeof row.items_text === "string" && row.items_text.trim()) {
+        parsedItems = [{ name: row.items_text.trim(), spec: "標準", qty: 1, subtotal: Number(row.totalAmount || 0) }];
+      }
+
+      const rawStatus = String(row.status || "UNPAID").toUpperCase();
+      const status = ["UNPAID", "PAID", "DONE"].includes(rawStatus) ? rawStatus : "UNPAID";
+
+      return {
+        id,
+        orderType: row.orderType || "dinein",
+        table: row.table || "內用",
+        items: parsedItems,
+        totalAmount: Number(row.totalAmount || 0),
+        status,
+        createdAt: row.createdAt || new Date().toLocaleTimeString("zh-TW", { hour12: false })
+      };
+    }
+
+    async function syncCounterOrders() {
+      if (!COUNTER_ORDERS_URL || isCustomerQrMode) return;
+      try {
+        const res = await fetch(COUNTER_ORDERS_URL, { method: "GET", cache: "no-store" });
+        if (!res.ok) return;
+        const payload = await res.json();
+        const rawList = Array.isArray(payload)
+          ? payload
+          : (Array.isArray(payload.orders) ? payload.orders : (Array.isArray(payload.data) ? payload.data : []));
+
+        const remoteOrders = rawList.map(normalizeRemoteOrder).filter(Boolean);
+        if (remoteOrders.length === 0) {
+          renderCounterOrders();
+          return;
+        }
+
+        const localOrders = loadOrders();
+        const localMap = new Map(localOrders.map(o => [o.id, o]));
+        const mergedMap = new Map();
+
+        remoteOrders.forEach(ro => {
+          const existing = localMap.get(ro.id);
+          mergedMap.set(ro.id, existing ? { ...ro, status: existing.status || ro.status } : ro);
+        });
+
+        localOrders.forEach(lo => {
+          if (!mergedMap.has(lo.id)) {
+            mergedMap.set(lo.id, lo);
+          }
+        });
+
+        const mergedList = Array.from(mergedMap.values());
+        saveOrders(mergedList);
+        renderCounterOrders();
+      } catch (err) {
+        console.error("同步櫃檯訂單失敗：", err);
+      }
+    }
 
     function setCounterOrderType(val) {
       if (isCustomerQrMode) return;
@@ -460,6 +548,7 @@
         tabCounter.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500 text-slate-950 transition";
         tabCustomer.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-700 transition";
         renderCounterOrders();
+        syncCounterOrders();
       } else if (viewName === "go_counter") {
         goCounterEl.classList.remove("hidden");
       } else {
