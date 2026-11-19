@@ -13,7 +13,6 @@
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col">
 
-  <!-- 頂部導覽列：品牌標題 -->
   <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-30">
     <div class="max-w-5xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-2">
       <div>
@@ -26,17 +25,13 @@
     </div>
   </header>
 
-  <!-- ==================== 客人點餐介面 ==================== -->
   <main id="view-customer" class="max-w-5xl mx-auto w-full px-4 py-4 flex-1 pb-28">
-    
-    <!-- 桌號與用餐方式狀態列 -->
     <div class="bg-slate-900 border border-slate-800 rounded-xl p-3.5 mb-4 flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center gap-2.5">
         <div class="bg-amber-500/15 border border-amber-500/40 text-amber-400 px-3.5 py-1.5 rounded-lg text-sm font-extrabold tracking-wide" id="table-display">
           尚未選擇用餐方式
         </div>
-        <!-- 僅在未掃專屬桌牌 QR Code 時顯示「重新選擇」按鈕，掃專屬桌碼時自動隱藏防誤觸 -->
-        <button id="btn-reselect-mode" onclick="openModeModal()" class="hidden bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs px-3 py-1.5 rounded-lg transition">
+        <button type="button" id="btn-reselect-mode" onclick="openModeModal()" class="hidden bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs px-3 py-1.5 rounded-lg transition">
           切換內用／外帶
         </button>
       </div>
@@ -45,17 +40,9 @@
       </div>
     </div>
 
-    <!-- 分類快速導覽列 -->
-    <div id="category-tabs" class="flex gap-2 overflow-x-auto no-scrollbar pb-3 mb-2 sticky top-[61px] bg-slate-950/95 backdrop-blur z-20 pt-1">
-      <!-- JS 動態生成分類按鈕 -->
-    </div>
+    <div id="category-tabs" class="flex gap-2 overflow-x-auto no-scrollbar pb-3 mb-2 sticky top-[61px] bg-slate-950/95 backdrop-blur z-20 pt-1"></div>
+    <div id="menu-container" class="space-y-6"></div>
 
-    <!-- 菜單列表區 -->
-    <div id="menu-container" class="space-y-6">
-      <!-- JS 動態生成菜單卡片 -->
-    </div>
-
-    <!-- 底部購物車浮動列 -->
     <div id="cart-bar" class="fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur border-t border-slate-800 p-3 z-30">
       <div class="max-w-5xl mx-auto flex items-center justify-between gap-4">
         <div onclick="openCartModal()" class="cursor-pointer flex items-center gap-3">
@@ -68,14 +55,13 @@
             <div class="text-lg font-bold text-amber-400">NT$ <span id="cart-total">0</span></div>
           </div>
         </div>
-        <button onclick="openCartModal()" id="btn-review-order" disabled class="bg-amber-500 disabled:bg-slate-800 disabled:text-slate-500 text-slate-950 font-bold px-6 py-2.5 rounded-xl text-sm transition">
+        <button type="button" onclick="openCartModal()" id="btn-review-order" disabled class="bg-amber-500 disabled:bg-slate-800 disabled:text-slate-500 text-slate-950 font-bold px-6 py-2.5 rounded-xl text-sm transition">
           確認餐點明細
         </button>
       </div>
     </div>
   </main>
 
-  <!-- ==================== 彈窗：強制選擇用餐方式（無網址桌號參數時觸發） ==================== -->
   <div id="mode-modal" class="hidden fixed inset-0 bg-slate-950/95 backdrop-blur-md z-50 flex items-center justify-center p-4">
     <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md p-6 space-y-5 shadow-2xl">
       <div class="text-center space-y-1.5">
@@ -84,7 +70,6 @@
         <p class="text-xs text-slate-400">選好後即可開始點餐，送單後請至櫃檯現金結帳</p>
       </div>
 
-      <!-- 內用 / 外帶 兩大按鈕 -->
       <div class="grid grid-cols-2 gap-3">
         <button type="button" id="btn-choose-dinein" onclick="expandDineInTables()" class="bg-slate-800 hover:bg-amber-500/20 border-2 border-slate-700 hover:border-amber-500 rounded-2xl p-5 text-center transition group">
           <div class="text-3xl mb-2">🏠</div>
@@ -99,17 +84,13 @@
         </button>
       </div>
 
-      <!-- 點選「內用」後展開的 1~10 桌按鈕網格 -->
       <div id="dinein-table-grid" class="hidden pt-3 border-t border-slate-800 space-y-2.5">
         <div class="text-xs font-bold text-amber-400 text-center">請點選您入座的桌號：</div>
-        <div class="grid grid-cols-5 gap-2" id="table-buttons-container">
-          <!-- JS 動態生成 1~10 桌按鈕 -->
-        </div>
+        <div class="grid grid-cols-5 gap-2" id="table-buttons-container"></div>
       </div>
     </div>
   </div>
 
-  <!-- ==================== 彈窗：客製化加料選項 ==================== -->
   <div id="option-modal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4">
     <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md p-5 space-y-4">
       <div class="flex justify-between items-start">
@@ -117,7 +98,7 @@
           <h3 id="modal-item-name" class="text-lg font-bold text-white">品項名稱</h3>
           <p id="modal-item-price" class="text-sm text-amber-400 font-semibold">NT$ 0</p>
         </div>
-        <button onclick="closeOptionModal()" class="text-slate-400 hover:text-white text-xl leading-none">&times;</button>
+        <button type="button" onclick="closeOptionModal()" class="text-slate-400 hover:text-white text-xl leading-none">&times;</button>
       </div>
 
       <div id="modal-addon-section" class="space-y-2">
@@ -135,13 +116,12 @@
         </div>
       </div>
 
-      <button onclick="confirmAddToCart()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 rounded-xl text-sm transition">
+      <button type="button" onclick="confirmAddToCart()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 rounded-xl text-sm transition">
         加入購物車
       </button>
     </div>
   </div>
 
-  <!-- ==================== 彈窗：購物車確認與送出 ==================== -->
   <div id="cart-modal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4">
     <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md p-5 max-h-[85vh] flex flex-col">
       <div class="flex justify-between items-center pb-3 border-b border-slate-800">
@@ -149,7 +129,7 @@
           <h3 class="text-lg font-bold text-white">確認點餐明細</h3>
           <p class="text-xs text-amber-400 font-semibold mt-0.5" id="cart-modal-table-label">內用｜第 1 桌</p>
         </div>
-        <button onclick="closeCartModal()" class="text-slate-400 hover:text-white text-xl leading-none">&times;</button>
+        <button type="button" onclick="closeCartModal()" class="text-slate-400 hover:text-white text-xl leading-none">&times;</button>
       </div>
 
       <div id="cart-items-list" class="py-3 overflow-y-auto flex-1 space-y-3"></div>
@@ -162,14 +142,13 @@
           <span>應付總金額</span>
           <span class="text-amber-400 text-xl">NT$ <span id="modal-cart-total">0</span></span>
         </div>
-        <button id="btn-submit-order" onclick="submitOrder()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 rounded-xl text-sm transition">
+        <button type="button" id="btn-submit-order" onclick="submitOrder()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 rounded-xl text-sm transition">
           送出訂單並前往櫃檯付款
         </button>
       </div>
     </div>
   </div>
 
-  <!-- ==================== 彈窗：客人結帳憑證（純用餐引導） ==================== -->
   <div id="receipt-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
     <div class="bg-slate-900 border border-amber-500/50 rounded-2xl w-full max-w-md p-6 text-center space-y-4">
       <div class="w-12 h-12 bg-amber-500/20 text-amber-400 rounded-full flex items-center justify-center mx-auto text-2xl">✓</div>
@@ -189,7 +168,7 @@
         </div>
       </div>
 
-      <button onclick="closeReceiptModal()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 rounded-xl text-sm transition">
+      <button type="button" onclick="closeReceiptModal()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 rounded-xl text-sm transition">
         繼續點餐
       </button>
     </div>
@@ -198,7 +177,6 @@
   <script>
     const DEFAULT_WEBHOOK_URL = "https://primary-production-5317642b.up.railway.app/webhook/ersan-order";
 
-    // 貳參小館完整 15 大分類菜單資料
     const MENU_DATA = [
       {
         category: "台式炒飯",
@@ -370,7 +348,7 @@
       renderMenu();
 
       const params = new URLSearchParams(window.location.search);
-      const tableParam = params.get("table");
+      const tableParam = (params.get("table") || "").trim().toLowerCase();
 
       if (tableParam && (tableParam === "takeout" || (Number(tableParam) >= 1 && Number(tableParam) <= 10))) {
         currentTable = tableParam;
@@ -436,6 +414,7 @@
 
       MENU_DATA.forEach((cat, idx) => {
         const tabBtn = document.createElement("button");
+        tabBtn.type = "button";
         tabBtn.className = "whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-medium bg-slate-900 border border-slate-800 text-slate-300 hover:border-amber-500 hover:text-amber-400 transition";
         tabBtn.textContent = cat.category;
         tabBtn.onclick = () => {
@@ -460,18 +439,24 @@
 
           const card = document.createElement("div");
           card.className = "bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-xl p-3.5 flex items-center justify-between gap-2 transition";
-          card.innerHTML = `
-            <div>
-              <div class="font-semibold text-sm text-white flex items-center gap-1.5 flex-wrap">
-                <span>${item.name}</span>
-                ${badgeHtml}
-              </div>
-              <div class="text-amber-400 font-bold text-sm mt-1">NT$ ${item.price}</div>
+
+          const infoDiv = document.createElement("div");
+          infoDiv.innerHTML = `
+            <div class="font-semibold text-sm text-white flex items-center gap-1.5 flex-wrap">
+              <span>${item.name}</span>
+              ${badgeHtml}
             </div>
-            <button onclick='openOptionModal(${JSON.stringify(item)}, "${effectiveAddon}")' class="bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-amber-400 border border-slate-700 hover:border-amber-500 w-8 h-8 rounded-lg font-bold flex items-center justify-center transition">
-              +
-            </button>
+            <div class="text-amber-400 font-bold text-sm mt-1">NT$ ${item.price}</div>
           `;
+
+          const addBtn = document.createElement("button");
+          addBtn.type = "button";
+          addBtn.className = "bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-amber-400 border border-slate-700 hover:border-amber-500 w-8 h-8 rounded-lg font-bold flex items-center justify-center transition shrink-0";
+          addBtn.textContent = "+";
+          addBtn.addEventListener("click", () => openOptionModal(item, effectiveAddon));
+
+          card.appendChild(infoDiv);
+          card.appendChild(addBtn);
           grid.appendChild(card);
         });
 
@@ -586,9 +571,9 @@
             <div class="text-xs text-slate-400">${item.spec}｜單價 $${item.unitPrice}</div>
           </div>
           <div class="flex items-center gap-2">
-            <button onclick="updateItemQty(${index}, -1)" class="w-7 h-7 rounded-lg bg-slate-800 text-slate-300 font-bold">-</button>
+            <button type="button" onclick="updateItemQty(${index}, -1)" class="w-7 h-7 rounded-lg bg-slate-800 text-slate-300 font-bold">-</button>
             <span class="text-sm font-bold w-5 text-center">${item.qty}</span>
-            <button onclick="updateItemQty(${index}, 1)" class="w-7 h-7 rounded-lg bg-slate-800 text-amber-400 font-bold">+</button>
+            <button type="button" onclick="updateItemQty(${index}, 1)" class="w-7 h-7 rounded-lg bg-slate-800 text-amber-400 font-bold">+</button>
           </div>
         `;
         listEl.appendChild(row);
